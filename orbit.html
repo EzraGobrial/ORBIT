@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>ORBIT</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05060f;font-family:'Segoe UI',system-ui,sans-serif;user-select:none;-webkit-user-select:none;}
   canvas{position:absolute;top:0;left:0;}
@@ -17,7 +20,7 @@
   .iconBtn{background:rgba(30,36,70,.75);border:1px solid rgba(120,140,255,.25);color:#dfe6ff;border-radius:10px;
     padding:8px 12px;font-size:15px;cursor:pointer;transition:background .15s;}
   .iconBtn:hover{background:rgba(50,60,110,.85);}
-  #shop{bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
+  #shop{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
   .shopBtn{background:linear-gradient(180deg,rgba(40,48,95,.92),rgba(24,28,58,.92));border:1px solid rgba(130,150,255,.35);
     color:#eef2ff;border-radius:14px;padding:10px 18px;font-size:15px;cursor:pointer;text-align:center;min-width:120px;
     box-shadow:0 4px 18px rgba(0,0,0,.4);transition:transform .1s, box-shadow .15s;}
@@ -75,6 +78,41 @@
   #tutTip .arrow{font-size:30px;color:#7fd4ff;text-shadow:0 0 12px rgba(127,212,255,.8);line-height:1;
     animation:tutBounce .7s ease-in-out infinite;}
   @keyframes tutBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(9px);}}
+  /* ---- planet picker ---- */
+  .pgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0;max-height:52vh;overflow:auto;}
+  .pcard{background:rgba(40,48,95,.5);border:1px solid rgba(140,160,255,.3);border-radius:12px;padding:10px 8px;cursor:pointer;color:#eef2ff;text-align:center;}
+  .pcard:hover{background:rgba(60,72,140,.6);}
+  .pcard.cant{opacity:.4;}
+  .pcircle{width:40px;height:40px;border-radius:50%;margin:0 auto 6px;}
+  .pcard .pn{font-weight:600;font-size:14px;}
+  .pcard .pd{font-size:10px;opacity:.65;line-height:1.3;margin:3px 0;}
+  .pcard .pc{font-size:12px;color:#ffd75a;}
+  #dustLine{font-size:13px;color:#8fe8ff;font-weight:500;text-shadow:0 0 8px rgba(120,220,255,.5);}
+  /* ---- auth ---- */
+  #authWrap{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center,#0b1030 0%,#05060f 75%);}
+  #authCard{width:330px;background:rgba(14,18,40,.97);border:1px solid rgba(130,150,255,.35);border-radius:18px;
+    padding:28px 30px;color:#eef2ff;box-shadow:0 0 60px rgba(90,120,255,.25);text-align:center;}
+  #authCard h2{margin:0 0 18px;font-size:26px;letter-spacing:1px;text-shadow:0 0 16px rgba(127,212,255,.4);}
+  #authCard input{width:100%;box-sizing:border-box;background:rgba(25,32,66,.8);border:1px solid rgba(130,150,255,.3);
+    border-radius:10px;color:#eef2ff;padding:11px 12px;font-size:14px;margin:7px 0;outline:none;}
+  #authCard input:focus{border-color:#7fd4ff;box-shadow:0 0 10px rgba(127,212,255,.3);}
+  .pwRow{position:relative;}
+  .pwRow input{padding-right:48px;}
+  .pwRow button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;
+    color:#8fa0d8;font-size:11px;cursor:pointer;}
+  .authBtn{width:100%;margin:10px 0 4px;background:linear-gradient(180deg,#3d6bff,#2947c9);border:none;border-radius:10px;
+    color:#fff;padding:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(60,100,255,.35);}
+  .authBtn:hover{filter:brightness(1.15);}
+  .authAlt{font-size:12px;opacity:.85;margin:8px 0;}
+  .authAlt a{color:#7fd4ff;cursor:pointer;}
+  .authOr{display:flex;align-items:center;gap:10px;margin:10px 0;opacity:.5;font-size:12px;}
+  .authOr:before,.authOr:after{content:'';flex:1;height:1px;background:rgba(140,160,255,.35);}
+  .authSoc{width:100%;margin:5px 0;background:rgba(25,32,66,.9);border:1px solid rgba(130,150,255,.3);border-radius:10px;
+    color:#eef2ff;padding:11px;font-size:14px;cursor:pointer;}
+  .authSoc.fb{background:#2f4a8f;}
+  .authSoc:hover{filter:brightness(1.2);}
+  .authErr{color:#ff8a9a;font-size:12px;min-height:14px;margin-top:4px;}
 </style>
 </head>
 <body>
@@ -82,10 +120,11 @@
 <canvas id="cv"></canvas>
 
 <div class="hud" id="starsBox"><span id="starsVal">0</span> <span class="star">&#9733;</span>
-  <div id="multLine"></div><div id="rateLine"></div></div>
+  <div id="dustLine"></div><div id="multLine"></div><div id="rateLine"></div></div>
 <div class="hud" id="topRight">
   <button class="iconBtn" id="muteBtn">Sound: on</button>
   <button class="iconBtn" id="helpBtn">?</button>
+  <button class="iconBtn" id="logoutBtn" style="display:none" onclick="UI.logout()"></button>
 </div>
 <div id="hintLine" style="display:none;"></div>
 <div id="shop">
@@ -99,6 +138,7 @@
   <div class="small">(ad placeholder &mdash; real ads not hooked up yet)</div></div></div>
 <div id="toasts"></div>
 <div id="tutTip"><div class="label"></div><div class="arrow">&#9660;</div></div>
+<div id="authWrap"><div id="authCard"></div></div>
 
 <script>
 'use strict';
@@ -173,13 +213,27 @@ function sStatic(dur){
 
 /* ---------------- state ---------------- */
 const HUES=[46,196,285,140,10,330,220,70]; // per-center planet hue
-let S=null, paused=false, mode=null, selected=null, mouse={x:-999,y:-999,wx:-999,wy:-999,downOn:null,dragC:-1};
+let S=null, paused=false, mode=null, selected=null, pendingType=0, movingRef=null,
+    mouse={x:-999,y:-999,wx:-999,wy:-999,downOn:null,dragC:-1};
 let particles=[], floats=[], pairCd={}, collisionLock=false;
 let scrambleTimer=null;
 
+/* planet catalog — each type has a name, look, cost and income multiplier */
+const PTYPES=[
+  {n:'Pebble',   d:'A humble grey rock. Everyone starts somewhere.', cost:10,    inc:1,   h:220, s:14, l:60, tex:'craters'},
+  {n:'Ember',    d:'Volcanic surface laced with glowing cracks.',    cost:40,    inc:1.6, h:18,  s:90, l:55, tex:'cracks'},
+  {n:'Aqualis',  d:'A banded ocean world.',                          cost:120,   inc:2.4, h:203, s:85, l:55, tex:'bands'},
+  {n:'Verdant',  d:'Continents of moss and jungle.',                 cost:350,   inc:3.5, h:130, s:65, l:48, tex:'patch'},
+  {n:'Halcyon',  d:'Golden, with a magnificent ring.',               cost:1000,  inc:5,   h:45,  s:85, l:60, tex:'ring'},
+  {n:'Vesper',   d:'Violet storms in permanent twilight.',           cost:3000,  inc:7.5, h:278, s:80, l:58, tex:'bands'},
+  {n:'Aurora',   d:'Shimmering polar lights wrap the whole globe.',  cost:9000,  inc:11,  h:168, s:90, l:55, tex:'shimmer'},
+  {n:'Obsidian', d:'Black glass hiding a burning core.',             cost:25000, inc:16,  h:300, s:70, l:30, tex:'glowcore'},
+  {n:'Prisma',   d:'A radiant P-Planet. Sheds P-Dust every lap — spend it to move planets.', cost:75000, inc:8, h:190, s:100, l:68, tex:'prism', dust:true},
+];
+const MOVE_COST=5;
 function newCenter(x,y){ return {x:x,y:y,tier:0,planets:[]}; }
-function newPlanet(ring,angle){
-  return {ring:ring,a:angle,spdLvl:0,tier:1,moons:[],phase:0,ecl:{}};
+function newPlanet(ring,angle,type){
+  return {ring:ring,a:angle,spdLvl:0,tier:1,type:type||0,seed:Math.floor(Math.random()*1000),moons:[],phase:0,ecl:{}};
 }
 function newMoon(n,pSpd){ // slightly-off ratio; tune to snap
   const base=[2,3,4][n%3];
@@ -187,7 +241,7 @@ function newMoon(n,pSpd){ // slightly-off ratio; tune to snap
 }
 function freshState(prev){
   const s={
-    v:3, stars:30, total:0,
+    v:3, stars:30, total:0, dust:0,
     rebirths: prev? prev.rebirths:0,
     glitched:false, gNext:0,
     centers:[newCenter(W/2,H/2)],
@@ -210,7 +264,7 @@ const lapsMin=p=>pSpeed(p)/TAU*60;
 /* costs */
 function countPlanets(){ return S.centers.reduce((a,c)=>a+c.planets.length,0); }
 function countMoons(){ return S.centers.reduce((a,c)=>a+c.planets.reduce((b,p)=>b+p.moons.length,0),0); }
-const costPlanet=()=>Math.floor(10*Math.pow(1.65,countPlanets()));
+const costPlanet=t=>Math.floor(PTYPES[t||0].cost*Math.pow(1.65,countPlanets()));
 const costCenter=()=>Math.floor(600*Math.pow(4.5,S.centers.length-1));
 const costGrow=p=>Math.floor(25*Math.pow(2.3,p.tier-1)+ (p.tier>=5?1e18:0));
 const costSpd=p=>Math.floor(15*Math.pow(1.85,p.spdLvl));
@@ -250,7 +304,7 @@ function moonMult(p){
   return m;
 }
 function planetIncome(c,ci,p,pi){ // stars per lap
-  const base=p.tier*p.tier;             // grow matters
+  const base=p.tier*p.tier*PTYPES[p.type||0].inc;
   const mm=moonMult(p);
   const rz=planetResonant(ci,pi)?2:1;
   return base*mm*rz*rbMult();
@@ -290,6 +344,10 @@ function step(dt){
         const inc=planetIncome(c,ci,p,pi);
         const pp=pPos(c,p);
         earn(inc,pp.x,pp.y-pRadius(p)-8);
+        if(PTYPES[p.type||0].dust){
+          S.dust+=p.tier;
+          floats.push({x:pp.x,y:pp.y-pRadius(p)-22,txt:'+'+p.tier+' P-Dust',age:0,col:'#8fe8ff'});
+        }
       }
       // moons
       p.moons.forEach((m,k)=>{
@@ -523,6 +581,66 @@ function updateCam(dt){
 }
 function toWorld(sx,sy){ return {x:(sx-W/2)/cam.scale+cam.x, y:(sy-H/2)/cam.scale+cam.y}; }
 
+/* ---------------- planet textures ---------------- */
+function drawTex(pp,pr,p,T,now){
+  const sd=p.seed||0;
+  ctx.save();
+  ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.clip();
+  if(T.tex==='craters'){
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,35%,0.45)';
+    for(let i=0;i<3;i++){
+      const ang=sd*0.7+i*2.1, d=pr*0.5;
+      ctx.beginPath(); ctx.arc(pp.x+Math.cos(ang)*d,pp.y+Math.sin(ang)*d,pr*(0.16+0.07*((sd+i)%3)),0,TAU); ctx.fill();
+    }
+  } else if(T.tex==='bands'){
+    ctx.translate(pp.x,pp.y); ctx.rotate(0.35);
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,30%,0.35)';
+    ctx.fillRect(-pr,-pr*0.45,pr*2,pr*0.28);
+    ctx.fillRect(-pr,pr*0.1,pr*2,pr*0.22);
+  } else if(T.tex==='cracks'){
+    ctx.strokeStyle='hsla(35,100%,70%,0.85)'; ctx.lineWidth=Math.max(1,pr*0.08);
+    for(let i=0;i<3;i++){
+      const a0=sd*0.3+i*2.2;
+      ctx.beginPath();
+      ctx.moveTo(pp.x+Math.cos(a0)*pr,pp.y+Math.sin(a0)*pr);
+      ctx.quadraticCurveTo(pp.x+Math.cos(a0+2)*pr*0.3,pp.y+Math.sin(a0+2)*pr*0.3,
+        pp.x+Math.cos(a0+2.8)*pr,pp.y+Math.sin(a0+2.8)*pr);
+      ctx.stroke();
+    }
+  } else if(T.tex==='patch'){
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,66%,0.5)';
+    for(let i=0;i<3;i++){
+      const ang=sd*0.9+i*2.3, d=pr*0.45;
+      ctx.beginPath(); ctx.ellipse(pp.x+Math.cos(ang)*d,pp.y+Math.sin(ang)*d,pr*0.4,pr*0.22,ang,0,TAU); ctx.fill();
+    }
+  } else if(T.tex==='shimmer'){
+    const ra=now/700+sd;
+    ctx.fillStyle='hsla('+T.h+',100%,85%,0.35)';
+    ctx.beginPath(); ctx.moveTo(pp.x,pp.y);
+    ctx.arc(pp.x,pp.y,pr,ra%TAU,(ra+1.2)%TAU); ctx.closePath(); ctx.fill();
+  } else if(T.tex==='glowcore'){
+    const g2=ctx.createRadialGradient(pp.x,pp.y,0,pp.x,pp.y,pr*0.7);
+    g2.addColorStop(0,'hsla('+T.h+',100%,70%,0.9)');
+    g2.addColorStop(1,'hsla('+T.h+',100%,50%,0)');
+    ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.fill();
+  } else if(T.tex==='prism'){
+    const tw=0.5+0.5*Math.sin(now/180+sd);
+    ctx.fillStyle='hsla(190,100%,'+(72+tw*16)+'%,0.85)';
+    for(let i=0;i<5;i++){
+      const ang=now/900+i*TAU/5+sd;
+      ctx.beginPath(); ctx.arc(pp.x+Math.cos(ang)*pr*0.55,pp.y+Math.sin(ang)*pr*0.55,pr*0.13,0,TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+  if(T.tex==='ring'){
+    ctx.save(); ctx.translate(pp.x,pp.y); ctx.rotate(-0.45); ctx.scale(1,0.38);
+    ctx.strokeStyle='hsla('+T.h+','+T.s+'%,75%,0.6)'; ctx.lineWidth=Math.max(1.5,pr*0.16);
+    ctx.beginPath(); ctx.arc(0,0,pr*1.65,0,TAU); ctx.stroke();
+    ctx.restore();
+  }
+}
+
 /* ---------------- rendering ---------------- */
 function draw(){
   // trail fade
@@ -557,17 +675,20 @@ function draw(){
     c.planets.forEach((p,pi)=>{
       const pp=pPos(c,p), pr=pRadius(p);
       const phased=now<p.phase;
+      const T=PTYPES[p.type||0];
       ctx.save();
       ctx.globalAlpha=phased? 0.35+0.2*Math.sin(now/90):1;
-      ctx.shadowColor='hsla('+hue+',90%,65%,0.9)'; ctx.shadowBlur=18;
+      ctx.shadowColor='hsla('+T.h+','+T.s+'%,65%,0.9)'; ctx.shadowBlur=T.dust?28:18;
       const pg=ctx.createRadialGradient(pp.x-pr*0.3,pp.y-pr*0.3,0,pp.x,pp.y,pr);
-      pg.addColorStop(0,'hsl('+hue+',95%,85%)'); pg.addColorStop(1,'hsl('+hue+',85%,55%)');
+      pg.addColorStop(0,'hsl('+T.h+','+T.s+'%,'+Math.min(88,T.l+28)+'%)');
+      pg.addColorStop(1,'hsl('+T.h+','+T.s+'%,'+Math.max(15,T.l-8)+'%)');
       ctx.fillStyle=pg;
       ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.fill();
+      drawTex(pp,pr,p,T,now);
       ctx.restore();
       if(planetResonant(ci,pi)){
         ctx.beginPath(); ctx.arc(pp.x,pp.y,pr+4,0,TAU);
-        ctx.strokeStyle='hsla('+hue+',100%,75%,'+(0.5+0.3*Math.sin(now/200))+')'; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.strokeStyle='hsla('+T.h+',100%,75%,'+(0.5+0.3*Math.sin(now/200))+')'; ctx.lineWidth=1.5; ctx.stroke();
       }
       if(selected && selected.type==='planet' && selected.c===ci && selected.p===pi){
         ctx.beginPath(); ctx.arc(pp.x,pp.y,pr+7,0,TAU); ctx.strokeStyle='#7fd4ff'; ctx.lineWidth=2; ctx.stroke();
@@ -687,15 +808,34 @@ cv.addEventListener('pointerdown',e=>{
   if(mode==='planet'){
     const best=nearestRing(x,y);
     if(best){
-      const cost=costPlanet();
+      const cost=costPlanet(pendingType);
       if(S.stars>=cost){
         S.stars-=cost;
         const c=S.centers[best.ci], a=Math.atan2(y-c.y,x-c.x);
-        c.planets.push(newPlanet(best.ring,(a+TAU)%TAU));
+        c.planets.push(newPlanet(best.ring,(a+TAU)%TAU,pendingType));
         sBuy(); burst(c.x+Math.cos(a)*ringR(c,best.ring),c.y+Math.sin(a)*ringR(c,best.ring),'#7fd4ff',14);
         mode=null; hint('');
       } else { toast('Not enough stars!'); mode=null; hint(''); }
     }
+    return;
+  }
+  if(mode==='move'){
+    const best=nearestRing(x,y);
+    if(best&&movingRef){
+      if(S.dust>=MOVE_COST){
+        S.dust-=MOVE_COST;
+        const src=movingRef.c, p=movingRef.p;
+        const idx=src.planets.indexOf(p);
+        if(idx>=0) src.planets.splice(idx,1);
+        const c2=S.centers[best.ci];
+        p.ring=best.ring; p.a=(Math.atan2(y-c2.y,x-c2.x)+TAU)%TAU;
+        c2.planets.push(p);
+        selected=null; renderPanel(); sBuy();
+        burst(c2.x+Math.cos(p.a)*ringR(c2,p.ring),c2.y+Math.sin(p.a)*ringR(c2,p.ring),'#8fe8ff',16);
+        toast('Planet moved for '+MOVE_COST+' P-Dust.');
+      } else toast('Not enough P-Dust!');
+    }
+    mode=null; movingRef=null; hint('');
     return;
   }
   if(mode==='center'){
@@ -722,7 +862,7 @@ cv.addEventListener('pointermove',e=>{
   }
 });
 addEventListener('pointerup',()=>{ mouse.dragC=-1; });
-addEventListener('keydown',e=>{ if(e.key==='Escape'){ mode=null; hint(''); selected=null; renderPanel(); } });
+addEventListener('keydown',e=>{ if(e.key==='Escape'){ mode=null; movingRef=null; hint(''); selected=null; renderPanel(); } });
 
 /* ---------------- UI ---------------- */
 const $=id=>document.getElementById(id);
@@ -737,9 +877,25 @@ function toast(html){
 function hint(t){ const h=$('hintLine'); if(!t){h.style.display='none';return;} h.textContent=t; h.style.display='block'; }
 
 $('buyPlanetBtn').onclick=()=>{
-  if(S.stars<costPlanet()){ toast('Need '+fmt(costPlanet())+' ★'); return; }
-  mode = mode==='planet'? null:'planet';
-  hint(mode?'Click a ring to place your planet (ESC to cancel)':'');
+  if(mode==='planet'||mode==='move'){ mode=null; movingRef=null; hint(''); return; }
+  showPlanetPicker();
+};
+function showPlanetPicker(){
+  let cards='';
+  PTYPES.forEach((T,i)=>{
+    const cost=costPlanet(i), can=S.stars>=cost;
+    cards+='<div class="pcard '+(can?'':'cant')+'" onclick="UI.pickPlanet('+i+')">'
+      +'<div class="pcircle" style="background:radial-gradient(circle at 35% 35%, hsl('+T.h+','+T.s+'%,'+Math.min(88,T.l+28)+'%), hsl('+T.h+','+T.s+'%,'+Math.max(15,T.l-8)+'%));box-shadow:0 0 12px hsla('+T.h+','+T.s+'%,60%,'+(T.dust?0.95:0.55)+');"></div>'
+      +'<div class="pn">'+T.n+'</div><div class="pd">'+T.d+'</div>'
+      +'<div class="pd">'+(T.dust?'Income &times;'+T.inc+' + P-Dust':'Income &times;'+T.inc)+'</div>'
+      +'<div class="pc">'+fmt(cost)+' &#9733;</div></div>';
+  });
+  showModal('<h2>Choose a planet</h2><div class="pgrid">'+cards+'</div><button class="mbtn" onclick="UI.hideModal()">Cancel</button>');
+}
+UI.pickPlanet=function(i){
+  if(S.stars<costPlanet(i)){ toast('Need '+fmt(costPlanet(i))+' &#9733; for '+PTYPES[i].n); return; }
+  pendingType=i; mode='planet'; hideModal();
+  hint('Click a ring to place '+PTYPES[i].n+' (ESC to cancel)');
 };
 $('buyCenterBtn').onclick=()=>{
   if(S.stars<costCenter()){ toast('Need '+fmt(costCenter())+' ★'); return; }
@@ -759,12 +915,13 @@ function showHelp(){
   <li>Close passes spark bonus stars. Eclipses (moon crossing in front) pay too.</li>
   <li>Orbits from different centers can overlap — rings glow <b style="color:#ff7070">red</b>. If planets collide you can save them&hellip; for a price. Drag centers to fix spacing.</li>
   <li>Rebirth resets all for a permanent &times;1.5 multiplier.</li>
+  <li>Prisma planets shed <b style="color:#8fe8ff">P-Dust</b> every lap &mdash; spend it to move planets between rings.</li>
   <li>There is no goal. Just make it spin.</li>
   </ul>
   <button class="mbtn" onclick="UI.hideModal()">Spin on</button>
   <div style="font-size:11px;opacity:.4;margin-top:6px;cursor:pointer" onclick="UI.hardReset()">hard reset save</div>`);
 }
-UI.hardReset=function(){ if(confirm('Wipe EVERYTHING including rebirths?')){ localStorage.removeItem('orbitSave'); S=freshState(null); S.seenHelp=true; hideModal(); } };
+UI.hardReset=function(){ if(confirm('Wipe EVERYTHING including rebirths?')){ try{localStorage.removeItem(saveKey());localStorage.removeItem('orbitSave');}catch(e){} S=freshState(null); S.seenHelp=true; hideModal(); } };
 
 /* panel */
 UI.act=function(what){
@@ -799,6 +956,12 @@ UI.act=function(what){
       }
     }
     if(what==='moon'){ const cost=costMoon(p); if(S.stars>=cost&&p.moons.length<4){ S.stars-=cost; p.moons.push(newMoon(p.moons.length)); tutUpgraded=true; sBuy(); } }
+    if(what==='move'){
+      if(S.dust>=MOVE_COST){
+        movingRef={c:c,p:p}; mode='move';
+        hint('Click any ring to move '+PTYPES[p.type||0].n+' there ('+MOVE_COST+' P-Dust, ESC to cancel)');
+      } else toast('Need '+MOVE_COST+' P-Dust. Prisma planets shed it every lap.');
+    }
     if(what.startsWith('tune')){
       const k=+what.slice(4), m=p.moons[k];
       if(m&&!m.tuned&&S.stars>=costTune(m)){ S.stars-=costTune(m); m.ratio=Math.round(m.ratio); m.tuned=true; sChime();
@@ -842,15 +1005,17 @@ function renderPanel(){
         `<div style="font-size:12px;margin:3px 0">Moon ${k+1}: tuned ${Math.round(m.ratio)}:1 (counts &times;2)</div>`:
         `<button class="pbtn ${S.stars>=costTune(m)?'':'cant'}" onclick="UI.act('tune${k}')">Tune moon ${k+1} to clean ratio <span class="c">${fmt(costTune(m))} ★</span></button>`;
     });
+    const T=PTYPES[p.type||0];
     el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
-      <h3>Planet <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
-      <div style="font-size:12px;opacity:.75">${lapsMin(p).toFixed(1)} laps/min</div>
-      <div class="brk">Income/lap: ${p.tier*p.tier} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
+      <h3>${T.n} <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
+      <div style="font-size:12px;opacity:.75">${lapsMin(p).toFixed(1)} laps/min${T.dust?' &middot; <span style="color:#8fe8ff">sheds '+p.tier+' P-Dust/lap</span>':''}</div>
+      <div class="brk">Income/lap: ${Math.round(p.tier*p.tier*T.inc*10)/10} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
       <button id="growBtn" class="pbtn ${S.stars>=gCost&&p.tier<5?'':'cant'}" onclick="UI.act('grow')">Grow planet ${p.tier>=5?'(MAX)':'(bigger + more ★)'} <span class="c">${p.tier>=5?'':fmt(gCost)+' ★'}</span></button>
       <button id="spdBtn" class="pbtn ${S.stars>=sCost?'':'cant'}" onclick="UI.act('spd')">Speed +13% (${lapsMin(p).toFixed(1)}&rarr;${(lapsMin(p)*1.13).toFixed(1)} lpm) <span class="c">${fmt(sCost)} ★</span></button>
       ${spdHint?'<div class="hint">'+spdHint+'</div>':''}
       <button id="moonBtn" class="pbtn ${S.stars>=mCost&&p.moons.length<4?'':'cant'}" onclick="UI.act('moon')">Buy moon ${p.moons.length}/4 (&times;${moonMult(p)}&rarr;&times;${moonMult(p)+1}) <span class="c">${p.moons.length>=4?'MAX':fmt(mCost)+' ★'}</span></button>
       ${moonRows}
+      <button class="pbtn ${S.dust>=MOVE_COST?'':'cant'}" onclick="UI.act('move')">Move planet <span class="c">${MOVE_COST} P-Dust</span></button>
       ${p.tier>=4?'<div class="hint">Big planets need clearance — watch for red rings.</div>':''}`;
   }
 }
@@ -861,10 +1026,12 @@ function renderHud(){
   $('multLine').innerHTML=(S.rebirths>0?'&times;'+rbMult().toFixed(2)+' rebirth':'')+(S.glitched?' <span style="color:#ff3df0">CORRUPTED</span>':'');
   S.rate=curRate();
   $('rateLine').textContent=S.rate>0.05? fmt(S.rate)+' ★/s':'';
+  const anyDust=S.dust>0||S.centers.some(c=>c.planets.some(p=>PTYPES[p.type||0].dust));
+  $('dustLine').textContent=anyDust? fmt(S.dust)+' P-Dust':'';
   const bp=$('buyPlanetBtn'), bc=$('buyCenterBtn');
-  bp.innerHTML='Buy Planet<span class="cost">'+fmt(costPlanet())+' ★</span>';
+  bp.innerHTML='Buy Planet<span class="cost">from '+fmt(costPlanet(0))+' ★</span>';
   bc.innerHTML='Buy Center<span class="cost">'+fmt(costCenter())+' ★</span>';
-  bp.classList.toggle('cant',S.stars<costPlanet());
+  bp.classList.toggle('cant',S.stars<costPlanet(0));
   bc.classList.toggle('cant',S.stars<costCenter());
   bp.classList.toggle('active',mode==='planet');
   bc.classList.toggle('active',mode==='center');
@@ -924,22 +1091,151 @@ function updateTut(){
   tip.style.top=Math.max(4,p.y-(st.noArrow?40:86))+'px';
 }
 
+/* ---------------- auth ----------------
+   Accounts use Firebase when FIREBASE_CONFIG is filled in (real cloud accounts
+   + cloud saves). Until then they fall back to device-local storage.
+   To enable: create a project at console.firebase.google.com, turn on
+   Email/Password sign-in + Firestore, then paste the web app config below. */
+const FIREBASE_CONFIG=null; /* e.g. {apiKey:"...",authDomain:"...",projectId:"...",appId:"..."} */
+let FB=null;
+try{
+  if(FIREBASE_CONFIG&&window.firebase){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    FB={auth:firebase.auth(),db:firebase.firestore()};
+  }
+}catch(e){ FB=null; }
+const AUTH={cur:null,uid:null};
+function saveKey(){ return 'orbitSave_'+(AUTH.uid||AUTH.cur||'guest'); }
+function cloudSave(){
+  if(!FB||!AUTH.uid||!S) return Promise.resolve();
+  try{ return FB.db.collection('saves').doc(AUTH.uid).set({data:JSON.stringify(S),at:Date.now()}).catch(()=>{}); }
+  catch(e){ return Promise.resolve(); }
+}
+function cloudLoad(){
+  if(!FB||!AUTH.uid) return Promise.resolve();
+  return FB.db.collection('saves').doc(AUTH.uid).get().then(doc=>{
+    if(!doc.exists) return;
+    const remote=JSON.parse(doc.data().data);
+    let local=null;
+    try{ local=JSON.parse(localStorage.getItem(saveKey())||'null'); }catch(e){}
+    if(!local||((remote.savedAt||0)>(local.savedAt||0))){
+      try{ localStorage.setItem(saveKey(),JSON.stringify(remote)); }catch(e){}
+    }
+  }).catch(()=>{});
+}
+setInterval(()=>{ cloudSave(); },30000);
+function accGet(){ try{return JSON.parse(localStorage.getItem('orbitAccounts')||'{}');}catch(e){ return {}; } }
+function accSet(a){ try{localStorage.setItem('orbitAccounts',JSON.stringify(a));}catch(e){} }
+function hashPw(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return 'h'+h; }
+function authMsg(t){ const m=document.getElementById('authMsg'); if(m) m.textContent=t; }
+function renderAuth(view){
+  const card=document.getElementById('authCard');
+  if(view==='signup'){
+    card.innerHTML=`<h2>Sign up</h2>
+      <input id="auEmail" type="email" placeholder="Email">
+      <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
+      <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
+      <div id="authMsg" class="authErr"></div>
+      <button class="authBtn" onclick="UI.authSignup()">Sign up</button>
+      <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
+      <div class="authOr"><span>Or</span></div>
+      <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
+      <button class="authSoc" onclick="UI.authSocial()">Login with Google</button>
+      <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
+  } else {
+    card.innerHTML=`<h2>Login</h2>
+      <input id="auEmail" type="email" placeholder="Email">
+      <div class="pwRow"><input id="auPw" type="password" placeholder="Password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
+      <div class="authAlt"><a onclick="UI.authForgot()">Forgot password?</a></div>
+      <div id="authMsg" class="authErr"></div>
+      <button class="authBtn" onclick="UI.authLogin()">Login</button>
+      <div class="authAlt">Don't have an account? <a onclick="renderAuth('signup')">Sign up</a></div>
+      <div class="authOr"><span>Or</span></div>
+      <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
+      <button class="authSoc" onclick="UI.authSocial()">Login with Google</button>
+      <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
+  }
+}
+UI.togglePw=function(id,btn){ const i=document.getElementById(id); if(!i)return; i.type=i.type==='password'?'text':'password'; btn.textContent=i.type==='password'?'show':'hide'; };
+UI.authForgot=function(){
+  if(FB){
+    const e=document.getElementById('auEmail').value.trim().toLowerCase();
+    if(!e) return authMsg('Type your email above first, then click forgot password.');
+    FB.auth.sendPasswordResetEmail(e)
+      .then(()=>authMsg('Password reset email sent. Check your inbox.'))
+      .catch(err=>authMsg(err.message));
+    return;
+  }
+  authMsg('Accounts are stored on this device only, so there is no email reset. Create a new account if needed.');
+};
+UI.authSocial=function(){ authMsg('Social login is a placeholder for now.'); };
+UI.authSignup=function(){
+  const e=document.getElementById('auEmail').value.trim().toLowerCase();
+  const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return authMsg('Enter a valid email.');
+  if(p1.length<6) return authMsg('Password must be at least 6 characters.');
+  if(p1!==p2) return authMsg('Passwords do not match.');
+  if(FB){
+    authMsg('Creating account...');
+    FB.auth.createUserWithEmailAndPassword(e,p1).then(cred=>{
+      AUTH.cur=e; AUTH.uid=cred.user.uid;
+      startGame();
+    }).catch(err=>authMsg(err.message));
+    return;
+  }
+  const acc=accGet();
+  if(acc[e]) return authMsg('That account already exists on this device. Try logging in.');
+  acc[e]={pw:hashPw(p1),created:Date.now()}; accSet(acc);
+  AUTH.cur=e; try{localStorage.setItem('orbitUser',e);}catch(err){}
+  startGame();
+};
+UI.authLogin=function(){
+  const e=document.getElementById('auEmail').value.trim().toLowerCase();
+  const p=document.getElementById('auPw').value;
+  if(FB){
+    authMsg('Logging in...');
+    FB.auth.signInWithEmailAndPassword(e,p).then(cred=>{
+      AUTH.cur=e; AUTH.uid=cred.user.uid;
+      cloudLoad().then(startGame).catch(startGame);
+    }).catch(err=>authMsg(err.message));
+    return;
+  }
+  const acc=accGet();
+  if(!acc[e]) return authMsg('No account with that email on this device.');
+  if(acc[e].pw!==hashPw(p)) return authMsg('Wrong password.');
+  AUTH.cur=e; try{localStorage.setItem('orbitUser',e);}catch(err){}
+  startGame();
+};
+UI.authGuest=function(){ try{localStorage.setItem('orbitGuest','1');}catch(e){} AUTH.cur=null; startGame(); };
+UI.logout=function(){
+  save();
+  const done=()=>{ try{localStorage.removeItem('orbitUser');localStorage.removeItem('orbitGuest');}catch(e){} location.reload(); };
+  if(FB&&AUTH.uid){ cloudSave().then(()=>FB.auth.signOut()).then(done).catch(done); }
+  else done();
+};
+
 /* ---------------- save / load ---------------- */
 function save(){
+  if(!S) return;
   try{
     S.savedAt=Date.now(); S.rateSaved=S.rate;
-    localStorage.setItem('orbitSave',JSON.stringify(S));
+    localStorage.setItem(saveKey(),JSON.stringify(S));
   }catch(e){}
 }
 function load(){
   try{
-    const raw=localStorage.getItem('orbitSave');
+    const raw=localStorage.getItem(saveKey()) || (AUTH.cur? null : localStorage.getItem('orbitSave'));
     if(!raw) return false;
     const d=JSON.parse(raw);
     if(!d||d.v!==3) return false;
     S=d;
     S.gNext=performance.now()+15000;
     if(typeof S.tut==='undefined') S.tut = S.centers.some(c=>c.planets.length>0)? -1 : 0;
+    if(typeof S.dust==='undefined') S.dust=0;
+    S.centers.forEach(c=>c.planets.forEach(p=>{
+      if(typeof p.type==='undefined') p.type=0;
+      if(typeof p.seed==='undefined') p.seed=Math.floor(Math.random()*1000);
+    }));
     if(S.glitched) document.body.classList.add('glitched');
     // offline earnings
     const away=(Date.now()-S.savedAt)/1000;
@@ -970,13 +1266,41 @@ function loop(now){
 }
 
 /* ---------------- boot ---------------- */
+function startGame(){
+  document.getElementById('authWrap').style.display='none';
+  if(!load()){ S=freshState(null); }
+  S.centers.forEach(c=>{ c.x=clamp(c.x,40,W-40); c.y=clamp(c.y,40,H-40); });
+  { const t0=camTargets(); cam.scale=t0.s; cam.x=t0.x; cam.y=t0.y; } // start framed
+  scanResonance();
+  S.seenHelp=true; // tutorial arrows replace the auto help popup; "?" still opens it
+  const lb=document.getElementById('logoutBtn');
+  lb.style.display='inline-block';
+  lb.textContent=AUTH.cur? 'Log out ('+AUTH.cur.split('@')[0]+')':'Log out (guest)';
+  last=performance.now();
+  requestAnimationFrame(loop);
+}
 resize();
-if(!load()){ S=freshState(null); }
-// re-center single default center on load if offscreen
-S.centers.forEach(c=>{ c.x=clamp(c.x,40,W-40); c.y=clamp(c.y,40,H-40); });
-scanResonance();
-S.seenHelp=true; // tutorial arrows replace the auto help popup; "?" still opens it
-requestAnimationFrame(loop);
+function showAuth(){ renderAuth('login'); document.getElementById('authWrap').style.display='flex'; }
+(function boot(){
+  let g=null;
+  try{ g=localStorage.getItem('orbitGuest'); }catch(e){}
+  if(FB){
+    let handled=false;
+    FB.auth.onAuthStateChanged(u=>{
+      if(handled) return; handled=true;
+      if(u){ AUTH.cur=u.email; AUTH.uid=u.uid; cloudLoad().then(startGame).catch(startGame); }
+      else if(g) startGame();
+      else showAuth();
+    });
+    setTimeout(()=>{ if(!handled){ handled=true; if(g) startGame(); else showAuth(); } },4000);
+    return;
+  }
+  let u=null;
+  try{ u=localStorage.getItem('orbitUser'); }catch(e){}
+  if(u){ AUTH.cur=u; startGame(); }
+  else if(g){ startGame(); }
+  else showAuth();
+})();
 </script>
 </body>
 </html>
