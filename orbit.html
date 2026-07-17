@@ -1096,7 +1096,14 @@ function updateTut(){
    + cloud saves). Until then they fall back to device-local storage.
    To enable: create a project at console.firebase.google.com, turn on
    Email/Password sign-in + Firestore, then paste the web app config below. */
-const FIREBASE_CONFIG=null; /* e.g. {apiKey:"...",authDomain:"...",projectId:"...",appId:"..."} */
+const FIREBASE_CONFIG={
+  apiKey: "AIzaSyAWM8ln4ZOYOvn9jx-lNLDtgvAebxd0Nws",
+  authDomain: "orbit-d0308.firebaseapp.com",
+  projectId: "orbit-d0308",
+  storageBucket: "orbit-d0308.firebasestorage.app",
+  messagingSenderId: "857570240638",
+  appId: "1:857570240638:web:89c1c826d222217ea9902f"
+};
 let FB=null;
 try{
   if(FIREBASE_CONFIG&&window.firebase){
