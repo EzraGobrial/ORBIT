@@ -113,6 +113,13 @@
   .authSoc.fb{background:#2f4a8f;}
   .authSoc:hover{filter:brightness(1.2);}
   .authErr{color:#ff8a9a;font-size:12px;min-height:14px;margin-top:4px;}
+  /* ---- leaderboard ---- */
+  .lbRow{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.04);border-radius:8px;padding:7px 10px;margin:4px 0;font-size:13px;text-align:left;}
+  .lbRow.me{border:1px solid #7fd4ff;background:rgba(127,212,255,.08);}
+  .lbRank{width:20px;opacity:.7;font-weight:600;}
+  .lbName{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lbScore{color:#ffd75a;white-space:nowrap;}
+  .lbRb{opacity:.55;font-size:11px;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -122,6 +129,7 @@
 <div class="hud" id="starsBox"><span id="starsVal">0</span> <span class="star">&#9733;</span>
   <div id="dustLine"></div><div id="multLine"></div><div id="rateLine"></div></div>
 <div class="hud" id="topRight">
+  <button class="iconBtn" id="lbBtn" onclick="UI.showLeaderboard()">Leaderboard</button>
   <button class="iconBtn" id="muteBtn">Sound: on</button>
   <button class="iconBtn" id="helpBtn">?</button>
   <button class="iconBtn" id="logoutBtn" style="display:none" onclick="UI.logout()"></button>
@@ -241,7 +249,7 @@ function newMoon(n,pSpd){ // slightly-off ratio; tune to snap
 }
 function freshState(prev){
   const s={
-    v:3, stars:30, total:0, dust:0,
+    v:3, stars:30, total:0, dust:0, lifetime: prev? prev.lifetime||0 : 0,
     rebirths: prev? prev.rebirths:0,
     glitched:false, gNext:0,
     centers:[newCenter(W/2,H/2)],
@@ -313,7 +321,7 @@ function planetIncome(c,ci,p,pi){ // stars per lap
 /* ---------------- income rate tracking ---------------- */
 let earnLog=[]; // [t, amt]
 function earn(amt,x,y,txt,col){
-  S.stars+=amt; S.total+=amt;
+  S.stars+=amt; S.total+=amt; S.lifetime=(S.lifetime||0)+amt;
   earnLog.push([performance.now(),amt]);
   if(x!==undefined) floats.push({x:x,y:y,txt:(txt||'+'+fmt(amt)+'★'),age:0,col:col||'#ffd75a'});
 }
@@ -533,7 +541,7 @@ UI.rebirthClick=function(){
 UI.doRebirth=function(){
   hideModal();
   const wasGlitched=S.glitched;
-  const keep={rebirths:S.rebirths+1, seenHelp:true};
+  const keep={rebirths:S.rebirths+1, seenHelp:true, lifetime:S.lifetime||0};
   document.body.classList.remove('glitched');
   S=freshState(keep);
   selected=null; mode=null; particles=[]; floats=[]; pairCd={}; earnLog=[];
@@ -1130,7 +1138,60 @@ function cloudLoad(){
     }
   }).catch(()=>{});
 }
-setInterval(()=>{ cloudSave(); },30000);
+setInterval(()=>{ cloudSave(); lbUpdate(); },30000);
+
+/* ---------------- leaderboard ---------------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function lbUpdate(){
+  if(!FB||!AUTH.uid||!AUTH.name||!S) return;
+  try{
+    FB.db.collection('leaderboard').doc(AUTH.uid).set({
+      name:AUTH.name, score:Math.floor(S.lifetime||0), rebirths:S.rebirths||0, at:Date.now()
+    }).catch(()=>{});
+  }catch(e){}
+}
+function ensureName(){
+  if(!FB||!AUTH.uid) return;
+  if(AUTH.name){ lbUpdate(); return; }
+  FB.db.collection('leaderboard').doc(AUTH.uid).get().then(doc=>{
+    if(doc.exists&&doc.data().name){ AUTH.name=doc.data().name; lbUpdate(); }
+    else askName();
+  }).catch(()=>{});
+}
+function askName(){
+  showModal('<h2>Appearance name</h2><p style="font-size:13px;opacity:.8">Pick the name shown on the leaderboard.</p>'
+    +'<input id="nameInput" maxlength="16" placeholder="2-16 characters" style="width:100%;box-sizing:border-box;background:rgba(25,32,66,.8);border:1px solid rgba(130,150,255,.3);border-radius:10px;color:#eef2ff;padding:11px;font-size:14px;outline:none;">'
+    +'<div id="authMsg" class="authErr"></div>'
+    +'<button class="mbtn" onclick="UI.saveName()">Save</button>');
+}
+UI.saveName=function(){
+  const n=document.getElementById('nameInput').value.trim();
+  if(n.length<2||n.length>16) return authMsg('Name must be 2-16 characters.');
+  AUTH.name=n; hideModal(); lbUpdate();
+};
+UI.showLeaderboard=function(){
+  if(!FB){
+    showModal('<h2>Leaderboard</h2><p style="font-size:14px;opacity:.8">The leaderboard is online-only.</p><button class="mbtn" onclick="UI.hideModal()">Close</button>');
+    return;
+  }
+  showModal('<h2>Leaderboard</h2><div id="lbList" style="font-size:13px;opacity:.7">Loading...</div><button class="mbtn" onclick="UI.hideModal()">Close</button>');
+  FB.db.collection('leaderboard').orderBy('score','desc').limit(20).get().then(snap=>{
+    let html='', i=0;
+    snap.forEach(doc=>{
+      i++;
+      const d=doc.data(), me=AUTH.uid===doc.id;
+      html+='<div class="lbRow'+(me?' me':'')+'"><span class="lbRank">'+i+'</span>'
+        +'<span class="lbName">'+escapeHtml(d.name||'???')+'</span>'
+        +'<span class="lbRb">'+(d.rebirths||0)+' rebirths</span>'
+        +'<span class="lbScore">'+fmt(d.score||0)+' &#9733;</span></div>';
+    });
+    const el=document.getElementById('lbList');
+    if(el){ el.style.opacity=1; el.innerHTML=html||'<div style="opacity:.7">Nobody here yet. Be the first!</div>'; }
+  }).catch(err=>{
+    const el=document.getElementById('lbList');
+    if(el) el.textContent='Could not load: '+err.message;
+  });
+};
 function accGet(){ try{return JSON.parse(localStorage.getItem('orbitAccounts')||'{}');}catch(e){ return {}; } }
 function accSet(a){ try{localStorage.setItem('orbitAccounts',JSON.stringify(a));}catch(e){} }
 function hashPw(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return 'h'+h; }
@@ -1139,6 +1200,7 @@ function renderAuth(view){
   const card=document.getElementById('authCard');
   if(view==='signup'){
     card.innerHTML=`<h2>Sign up</h2>
+      <input id="auName" type="text" maxlength="16" placeholder="Appearance name (shown on leaderboard)">
       <input id="auEmail" type="email" placeholder="Email">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
       <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
@@ -1188,6 +1250,9 @@ UI.authGoogle=function(){
 UI.authSignup=function(){
   const e=document.getElementById('auEmail').value.trim().toLowerCase();
   const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
+  const nm=document.getElementById('auName').value.trim();
+  if(nm.length<2||nm.length>16) return authMsg('Appearance name must be 2-16 characters.');
+  AUTH.name=nm;
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return authMsg('Enter a valid email.');
   if(p1.length<6) return authMsg('Password must be at least 6 characters.');
   if(p1!==p2) return authMsg('Passwords do not match.');
@@ -1248,6 +1313,7 @@ function load(){
     S.gNext=performance.now()+15000;
     if(typeof S.tut==='undefined') S.tut = S.centers.some(c=>c.planets.length>0)? -1 : 0;
     if(typeof S.dust==='undefined') S.dust=0;
+    if(typeof S.lifetime==='undefined') S.lifetime=S.total||0;
     S.centers.forEach(c=>c.planets.forEach(p=>{
       if(typeof p.type==='undefined') p.type=0;
       if(typeof p.seed==='undefined') p.seed=Math.floor(Math.random()*1000);
@@ -1257,7 +1323,7 @@ function load(){
     const away=(Date.now()-S.savedAt)/1000;
     if(away>60 && S.rateSaved>0){
       const gain=Math.floor(Math.min(away,8*3600)*S.rateSaved*0.5);
-      if(gain>0){ S.stars+=gain; S.total+=gain;
+      if(gain>0){ S.stars+=gain; S.total+=gain; S.lifetime=(S.lifetime||0)+gain;
         setTimeout(()=>toast('While you were away: +'+fmt(gain)+' ★'),800); }
     }
     return true;
@@ -1292,6 +1358,7 @@ function startGame(){
   const lb=document.getElementById('logoutBtn');
   lb.style.display='inline-block';
   lb.textContent=AUTH.cur? 'Log out ('+AUTH.cur.split('@')[0]+')':'Log out (guest)';
+  ensureName();
   last=performance.now();
   requestAnimationFrame(loop);
 }
