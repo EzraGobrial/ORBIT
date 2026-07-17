@@ -1147,7 +1147,7 @@ function renderAuth(view){
       <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
       <div class="authOr"><span>Or</span></div>
       <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
-      <button class="authSoc" onclick="UI.authSocial()">Login with Google</button>
+      <button class="authSoc" onclick="UI.authGoogle()">Login with Google</button>
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   } else {
     card.innerHTML=`<h2>Login</h2>
@@ -1159,7 +1159,7 @@ function renderAuth(view){
       <div class="authAlt">Don't have an account? <a onclick="renderAuth('signup')">Sign up</a></div>
       <div class="authOr"><span>Or</span></div>
       <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
-      <button class="authSoc" onclick="UI.authSocial()">Login with Google</button>
+      <button class="authSoc" onclick="UI.authGoogle()">Login with Google</button>
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   }
 }
@@ -1175,7 +1175,16 @@ UI.authForgot=function(){
   }
   authMsg('Accounts are stored on this device only, so there is no email reset. Create a new account if needed.');
 };
-UI.authSocial=function(){ authMsg('Social login is a placeholder for now.'); };
+UI.authSocial=function(){ authMsg('Facebook login is a placeholder for now.'); };
+UI.authGoogle=function(){
+  if(!FB) return authMsg('Google login needs the Firebase connection.');
+  authMsg('Opening Google sign-in...');
+  const prov=new firebase.auth.GoogleAuthProvider();
+  FB.auth.signInWithPopup(prov).then(cred=>{
+    AUTH.cur=cred.user.email; AUTH.uid=cred.user.uid;
+    cloudLoad().then(startGame).catch(startGame);
+  }).catch(err=>authMsg(err.message));
+};
 UI.authSignup=function(){
   const e=document.getElementById('auEmail').value.trim().toLowerCase();
   const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
