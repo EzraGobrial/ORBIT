@@ -1159,7 +1159,7 @@ function ensureName(){
   }).catch(()=>{});
 }
 function askName(){
-  showModal('<h2>Appearance name</h2><p style="font-size:13px;opacity:.8">Pick the name shown on the leaderboard.</p>'
+  showModal('<h2>Display name</h2><p style="font-size:13px;opacity:.8">Pick the name shown on the leaderboard.</p>'
     +'<input id="nameInput" maxlength="16" placeholder="2-16 characters" style="width:100%;box-sizing:border-box;background:rgba(25,32,66,.8);border:1px solid rgba(130,150,255,.3);border-radius:10px;color:#eef2ff;padding:11px;font-size:14px;outline:none;">'
     +'<div id="authMsg" class="authErr"></div>'
     +'<button class="mbtn" onclick="UI.saveName()">Save</button>');
@@ -1200,7 +1200,7 @@ function renderAuth(view){
   const card=document.getElementById('authCard');
   if(view==='signup'){
     card.innerHTML=`<h2>Sign up</h2>
-      <input id="auName" type="text" maxlength="16" placeholder="Appearance name (shown on leaderboard)">
+      <input id="auName" type="text" maxlength="16" placeholder="Display name (shown on leaderboard)">
       <input id="auEmail" type="email" placeholder="Email">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
       <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
@@ -1251,7 +1251,7 @@ UI.authSignup=function(){
   const e=document.getElementById('auEmail').value.trim().toLowerCase();
   const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
   const nm=document.getElementById('auName').value.trim();
-  if(nm.length<2||nm.length>16) return authMsg('Appearance name must be 2-16 characters.');
+  if(nm.length<2||nm.length>16) return authMsg('Display name must be 2-16 characters.');
   AUTH.name=nm;
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return authMsg('Enter a valid email.');
   if(p1.length<6) return authMsg('Password must be at least 6 characters.');
