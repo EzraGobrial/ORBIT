@@ -68,6 +68,13 @@
   #adOverlay{position:fixed;inset:0;z-index:60;background:#101018;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;}
   #adOverlay .adBox{background:linear-gradient(135deg,#22305e,#5a2a6e);border-radius:20px;padding:50px 60px;text-align:center;font-size:22px;box-shadow:0 0 60px rgba(120,80,255,.4);}
   #adOverlay .small{font-size:13px;opacity:.6;margin-top:14px;}
+  /* ---- tutorial ---- */
+  #tutTip{position:absolute;z-index:35;pointer-events:none;display:none;transform:translateX(-50%);text-align:center;}
+  #tutTip .label{background:rgba(16,26,54,.97);border:2px solid #7fd4ff;color:#eaf4ff;border-radius:12px;
+    padding:9px 14px;font-size:14px;font-weight:600;max-width:260px;box-shadow:0 0 22px rgba(127,212,255,.35);}
+  #tutTip .arrow{font-size:30px;color:#7fd4ff;text-shadow:0 0 12px rgba(127,212,255,.8);line-height:1;
+    animation:tutBounce .7s ease-in-out infinite;}
+  @keyframes tutBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(9px);}}
 </style>
 </head>
 <body>
@@ -77,7 +84,7 @@
 <div class="hud" id="starsBox"><span id="starsVal">0</span> <span class="star">&#9733;</span>
   <div id="multLine"></div><div id="rateLine"></div></div>
 <div class="hud" id="topRight">
-  <button class="iconBtn" id="muteBtn">&#128266;</button>
+  <button class="iconBtn" id="muteBtn">Sound: on</button>
   <button class="iconBtn" id="helpBtn">?</button>
 </div>
 <div id="hintLine" style="display:none;"></div>
@@ -88,9 +95,10 @@
 <div id="rebirthBar"><button id="rebirthBtn"></button></div>
 <div id="panel"></div>
 <div id="modalWrap"><div id="modal"></div></div>
-<div id="adOverlay"><div class="adBox">&#128126; YOUR AD HERE &#128126;<div id="adCount" style="font-size:40px;margin-top:12px;">5</div>
+<div id="adOverlay"><div class="adBox">YOUR AD HERE<div id="adCount" style="font-size:40px;margin-top:12px;">5</div>
   <div class="small">(ad placeholder &mdash; real ads not hooked up yet)</div></div></div>
 <div id="toasts"></div>
+<div id="tutTip"><div class="label"></div><div class="arrow">&#9660;</div></div>
 
 <script>
 'use strict';
@@ -184,6 +192,7 @@ function freshState(prev){
     glitched:false, gNext:0,
     centers:[newCenter(W/2,H/2)],
     rate:0, savedAt:Date.now(), seenHelp: prev? prev.seenHelp:false,
+    tut: prev? -1 : 0,
   };
   return s;
 }
@@ -339,9 +348,9 @@ function triggerCollision(A,B){
   collisionLock=true; paused=true; pendingCrash={A:A,B:B};
   sBoom();
   const fee=Math.max(50,Math.ceil(S.stars*0.12));
-  showModal(`<h2>&#128165; Collision!</h2>
+  showModal(`<h2>Collision!</h2>
     <p style="font-size:14px;opacity:.85">Two planets crossed paths. Irresponsible placement... or bold strategy?</p>
-    <button class="mbtn" onclick="UI.adRescue()">&#128250; Watch ad to save them <span style="opacity:.6">(placeholder)</span></button>
+    <button class="mbtn" onclick="UI.adRescue()">Watch ad to save them <span style="opacity:.6">(placeholder)</span></button>
     <button class="mbtn ${S.stars>=fee?'':'cant'}" onclick="UI.payRescue(${fee})">Pay ${fmt(fee)} &#9733; to save them</button>
     <button class="mbtn danger" onclick="UI.shatter()">Let them shatter</button>`);
 }
@@ -371,7 +380,7 @@ UI.shatter=function(){
   const rm=[{c:A.c,p:A.p},{c:B.c,p:B.p}];
   rm.forEach(o=>{ const idx=o.c.planets.indexOf(o.p); if(idx>=0) o.c.planets.splice(idx,1); });
   selected=null; renderPanel();
-  toast('Two planets shattered. &#128148;');
+  toast('Two planets shattered.');
   endCrash();
 };
 
@@ -430,7 +439,7 @@ function glitchWave(){
       S.stars=Math.max(0,Math.floor(S.stars*f));
       el.classList.remove('scramble');
       const diff=S.stars-before;
-      toast(diff>=0? '&#9889; GLITCH: stars corrupted UP +'+fmt(diff)+' &#9733;' : '&#9889; GLITCH: stars corrupted DOWN '+fmt(diff)+' &#9733;');
+      toast(diff>=0? 'GLITCH: stars corrupted UP +'+fmt(diff)+' &#9733;' : 'GLITCH: stars corrupted DOWN '+fmt(diff)+' &#9733;');
     }
   },45);
   setTimeout(()=>document.body.classList.remove('gwave'),2600);
@@ -451,13 +460,13 @@ const rbReady=()=>rbReqs().every(r=>r.ok);
 UI.rebirthClick=function(){
   const reqs=rbReqs();
   if(!rbReady()){
-    showModal('<h2>&#128260; Rebirth <span style="font-size:14px;opacity:.6">(locked)</span></h2>'+
+    showModal('<h2>Rebirth <span style="font-size:14px;opacity:.6">(locked)</span></h2>'+
       '<p style="font-size:13px;opacity:.8">Reset everything for a permanent &times;1.5 multiplier. Unlock by:</p><ul>'+
-      reqs.map(r=>'<li>'+(r.ok?'&#9989;':'&#11036;')+' '+r.t+' <span style="opacity:.55;font-size:12px">('+r.cur+')</span></li>').join('')+
+      reqs.map(r=>'<li>'+(r.ok?'&#10003;':'&ndash;')+' '+r.t+' <span style="opacity:.55;font-size:12px">('+r.cur+')</span></li>').join('')+
       '</ul><button class="mbtn" onclick="UI.hideModal()">Back</button>');
     return;
   }
-  showModal('<h2>&#128260; Rebirth?</h2><p style="font-size:14px">Everything resets — stars, planets, centers, moons.<br><br>'+
+  showModal('<h2>Rebirth?</h2><p style="font-size:14px">Everything resets — stars, planets, centers, moons.<br><br>'+
     'You keep: permanent <b style="color:#d9a9ff">&times;1.5</b> multiplier (forever, stacks).<br>'+
     'Current: &times;'+rbMult().toFixed(2)+' &rarr; &times;'+(rbMult()*1.5).toFixed(2)+'</p>'+
     '<button class="mbtn" onclick="UI.doRebirth()">Rebirth</button>'+
@@ -473,9 +482,9 @@ UI.doRebirth=function(){
   renderPanel();
   sChime();
   burst(W/2,H/2,'#d9a9ff',60);
-  toast('&#128260; Reborn! Permanent multiplier now &times;'+rbMult().toFixed(2));
+  toast('Reborn! Permanent multiplier now &times;'+rbMult().toFixed(2));
   if(rollGlitch()){
-    setTimeout(()=>{ sStatic(1.2); toast('&#9888;&#65039; s0mething went wr0ng&hellip;'); },2500);
+    setTimeout(()=>{ sStatic(1.2); toast('s0mething went wr0ng&hellip;'); },2500);
   } else if(wasGlitched){
     toast('The corruption is gone. Reality restored.');
   }
@@ -738,19 +747,19 @@ $('buyCenterBtn').onclick=()=>{
   hint(mode?'Click empty space to place a new center (ESC to cancel)':'');
 };
 $('rebirthBtn').onclick=()=>UI.rebirthClick();
-$('muteBtn').onclick=()=>{ muted=!muted; $('muteBtn').innerHTML=muted?'&#128263;':'&#128266;'; };
+$('muteBtn').onclick=()=>{ muted=!muted; $('muteBtn').innerHTML=muted?'Sound: off':'Sound: on'; };
 $('helpBtn').onclick=()=>showHelp();
 function showHelp(){
   showModal(`<h2>ORBIT</h2>
   <ul style="line-height:1.7">
-  <li>&#127760; Planets earn <b style="color:#ffd75a">stars ★</b> every full lap.</li>
-  <li>&#128176; Buy planets &amp; click a ring to place them. Grow them for more income.</li>
-  <li>&#127765; Moons multiply their planet. Tune a moon to a clean ratio for &times;2.</li>
-  <li>&#127925; Two planets at clean speed ratios (2:1, 3:2&hellip;) lock into <b>resonance</b> — both earn &times;2. Watch for the dotted "almost" lines.</li>
-  <li>&#9889; Close passes spark bonus stars. Eclipses (moon crossing in front) pay too.</li>
-  <li>&#128165; Orbits from different centers can overlap — rings glow <b style="color:#ff7070">red</b>. If planets collide you can save them&hellip; for a price. Drag centers to fix spacing.</li>
-  <li>&#128260; Rebirth resets all for a permanent &times;1.5 multiplier.</li>
-  <li>There is no goal. Just make it spin. &#10024;</li>
+  <li>Planets earn <b style="color:#ffd75a">stars ★</b> every full lap.</li>
+  <li>Buy planets &amp; click a ring to place them. Grow them for more income.</li>
+  <li>Moons multiply their planet. Tune a moon to a clean ratio for &times;2.</li>
+  <li>Two planets at clean speed ratios (2:1, 3:2&hellip;) lock into <b>resonance</b> — both earn &times;2. Watch for the dotted "almost" lines.</li>
+  <li>Close passes spark bonus stars. Eclipses (moon crossing in front) pay too.</li>
+  <li>Orbits from different centers can overlap — rings glow <b style="color:#ff7070">red</b>. If planets collide you can save them&hellip; for a price. Drag centers to fix spacing.</li>
+  <li>Rebirth resets all for a permanent &times;1.5 multiplier.</li>
+  <li>There is no goal. Just make it spin.</li>
   </ul>
   <button class="mbtn" onclick="UI.hideModal()">Spin on</button>
   <div style="font-size:11px;opacity:.4;margin-top:6px;cursor:pointer" onclick="UI.hardReset()">hard reset save</div>`);
@@ -769,11 +778,11 @@ UI.act=function(what){
   } else {
     const p=c.planets[selected.p];
     if(!p) return;
-    if(what==='grow'){ const cost=costGrow(p); if(S.stars>=cost&&p.tier<5){ S.stars-=cost; p.tier++; sBuy(); const pp=pPos(c,p); burst(pp.x,pp.y,'#ffd75a',12);} }
+    if(what==='grow'){ const cost=costGrow(p); if(S.stars>=cost&&p.tier<5){ S.stars-=cost; p.tier++; tutUpgraded=true; sBuy(); const pp=pPos(c,p); burst(pp.x,pp.y,'#ffd75a',12);} }
     if(what==='spd'){
       const cost=costSpd(p);
       if(S.stars>=cost){
-        S.stars-=cost; p.spdLvl++; sBuy();
+        S.stars-=cost; p.spdLvl++; tutUpgraded=true; sBuy();
         // snap-assist: if now within 3.5% of clean ratio with a neighbor, snap exactly
         let snapped=null;
         p.snapMul=1;
@@ -786,14 +795,14 @@ UI.act=function(what){
             snapped=b;
           }
         });
-        if(snapped){ sChime(); toast('&#127925; Locked into '+snapped.p+':'+snapped.q+' resonance! &times;2 for both'); }
+        if(snapped){ sChime(); toast('Locked into '+snapped.p+':'+snapped.q+' resonance! &times;2 for both'); }
       }
     }
-    if(what==='moon'){ const cost=costMoon(p); if(S.stars>=cost&&p.moons.length<4){ S.stars-=cost; p.moons.push(newMoon(p.moons.length)); sBuy(); } }
+    if(what==='moon'){ const cost=costMoon(p); if(S.stars>=cost&&p.moons.length<4){ S.stars-=cost; p.moons.push(newMoon(p.moons.length)); tutUpgraded=true; sBuy(); } }
     if(what.startsWith('tune')){
       const k=+what.slice(4), m=p.moons[k];
       if(m&&!m.tuned&&S.stars>=costTune(m)){ S.stars-=costTune(m); m.ratio=Math.round(m.ratio); m.tuned=true; sChime();
-        toast('&#127765; Moon tuned to '+m.ratio+':1 — counts double!'); }
+        toast('Moon tuned to '+m.ratio+':1 — counts double!'); }
     }
   }
   renderPanel();
@@ -807,7 +816,7 @@ function renderPanel(){
   if(selected.type==='center'){
     const cost=costGrowC(c), can=S.stars>=cost&&ringCount(c)<maxRings;
     el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
-      <h3>&#9728;&#65039; Center ${selected.c+1}</h3>
+      <h3>Center ${selected.c+1}</h3>
       <div style="font-size:12px;opacity:.75">Rings: ${ringCount(c)} / ${maxRings} &middot; Planets: ${c.planets.length}</div>
       <div class="brk">Grow the center to unlock another orbit ring &rarr; room for more planets.</div>
       <button class="pbtn ${can?'':'cant'}" onclick="UI.act('growC')">Grow center (+1 ring) <span class="c">${ringCount(c)>=maxRings?'MAX':fmt(cost)+' ★'}</span></button>
@@ -824,37 +833,37 @@ function renderPanel(){
       const cur=pSpeed(p), next=cur*1.13;
       c.planets.forEach(o=>{ if(o===p) return;
         const b=ratioCheck(next,pSpeed(o));
-        if(b&&b.err<0.035) spdHint='&#9889; next upgrade locks '+b.p+':'+b.q+' resonance!';
+        if(b&&b.err<0.035) spdHint='next upgrade locks '+b.p+':'+b.q+' resonance!';
       });
     }
     let moonRows='';
     p.moons.forEach((m,k)=>{
       moonRows+=m.tuned?
-        `<div style="font-size:12px;margin:3px 0">&#127765; Moon ${k+1}: tuned ${Math.round(m.ratio)}:1 &#10024; (counts &times;2)</div>`:
-        `<button class="pbtn ${S.stars>=costTune(m)?'':'cant'}" onclick="UI.act('tune${k}')">&#127765; Tune moon ${k+1} to clean ratio <span class="c">${fmt(costTune(m))} ★</span></button>`;
+        `<div style="font-size:12px;margin:3px 0">Moon ${k+1}: tuned ${Math.round(m.ratio)}:1 (counts &times;2)</div>`:
+        `<button class="pbtn ${S.stars>=costTune(m)?'':'cant'}" onclick="UI.act('tune${k}')">Tune moon ${k+1} to clean ratio <span class="c">${fmt(costTune(m))} ★</span></button>`;
     });
     el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
-      <h3>&#127760; Planet <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
+      <h3>Planet <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
       <div style="font-size:12px;opacity:.75">${lapsMin(p).toFixed(1)} laps/min</div>
       <div class="brk">Income/lap: ${p.tier*p.tier} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
-      <button class="pbtn ${S.stars>=gCost&&p.tier<5?'':'cant'}" onclick="UI.act('grow')">Grow planet ${p.tier>=5?'(MAX)':'(bigger + more ★)'} <span class="c">${p.tier>=5?'':fmt(gCost)+' ★'}</span></button>
-      <button class="pbtn ${S.stars>=sCost?'':'cant'}" onclick="UI.act('spd')">Speed +13% (${lapsMin(p).toFixed(1)}&rarr;${(lapsMin(p)*1.13).toFixed(1)} lpm) <span class="c">${fmt(sCost)} ★</span></button>
+      <button id="growBtn" class="pbtn ${S.stars>=gCost&&p.tier<5?'':'cant'}" onclick="UI.act('grow')">Grow planet ${p.tier>=5?'(MAX)':'(bigger + more ★)'} <span class="c">${p.tier>=5?'':fmt(gCost)+' ★'}</span></button>
+      <button id="spdBtn" class="pbtn ${S.stars>=sCost?'':'cant'}" onclick="UI.act('spd')">Speed +13% (${lapsMin(p).toFixed(1)}&rarr;${(lapsMin(p)*1.13).toFixed(1)} lpm) <span class="c">${fmt(sCost)} ★</span></button>
       ${spdHint?'<div class="hint">'+spdHint+'</div>':''}
-      <button class="pbtn ${S.stars>=mCost&&p.moons.length<4?'':'cant'}" onclick="UI.act('moon')">Buy moon ${p.moons.length}/4 (&times;${moonMult(p)}&rarr;&times;${moonMult(p)+1}) <span class="c">${p.moons.length>=4?'MAX':fmt(mCost)+' ★'}</span></button>
+      <button id="moonBtn" class="pbtn ${S.stars>=mCost&&p.moons.length<4?'':'cant'}" onclick="UI.act('moon')">Buy moon ${p.moons.length}/4 (&times;${moonMult(p)}&rarr;&times;${moonMult(p)+1}) <span class="c">${p.moons.length>=4?'MAX':fmt(mCost)+' ★'}</span></button>
       ${moonRows}
-      ${p.tier>=4?'<div class="hint">&#9888;&#65039; Big planets need clearance — watch for red rings.</div>':''}`;
+      ${p.tier>=4?'<div class="hint">Big planets need clearance — watch for red rings.</div>':''}`;
   }
 }
 UI.deselect=function(){ selected=null; renderPanel(); };
 
 function renderHud(){
   if(!scrambleTimer) $('starsVal').textContent=fmt(S.stars);
-  $('multLine').innerHTML=(S.rebirths>0?'&times;'+rbMult().toFixed(2)+' rebirth':'')+(S.glitched?' <span style="color:#ff3df0">&#9888; CORRUPTED</span>':'');
+  $('multLine').innerHTML=(S.rebirths>0?'&times;'+rbMult().toFixed(2)+' rebirth':'')+(S.glitched?' <span style="color:#ff3df0">CORRUPTED</span>':'');
   S.rate=curRate();
   $('rateLine').textContent=S.rate>0.05? fmt(S.rate)+' ★/s':'';
   const bp=$('buyPlanetBtn'), bc=$('buyCenterBtn');
-  bp.innerHTML='&#127760; Buy Planet<span class="cost">'+fmt(costPlanet())+' ★</span>';
-  bc.innerHTML='&#9728;&#65039; Buy Center<span class="cost">'+fmt(costCenter())+' ★</span>';
+  bp.innerHTML='Buy Planet<span class="cost">'+fmt(costPlanet())+' ★</span>';
+  bc.innerHTML='Buy Center<span class="cost">'+fmt(costCenter())+' ★</span>';
   bp.classList.toggle('cant',S.stars<costPlanet());
   bc.classList.toggle('cant',S.stars<costCenter());
   bp.classList.toggle('active',mode==='planet');
@@ -862,7 +871,57 @@ function renderHud(){
   const rb=$('rebirthBtn');
   const reqs=rbReqs(), done=reqs.filter(r=>r.ok).length;
   rb.classList.toggle('locked',!rbReady());
-  rb.innerHTML=rbReady()? '&#128260; Rebirth ready! (&times;'+(rbMult()*1.5).toFixed(2)+')' : '&#128260; Rebirth '+done+'/'+reqs.length;
+  rb.innerHTML=rbReady()? 'Rebirth ready! (&times;'+(rbMult()*1.5).toFixed(2)+')' : 'Rebirth '+done+'/'+reqs.length;
+}
+
+/* ---------------- tutorial ---------------- */
+let tutT0=0, tutUpgraded=false;
+function w2s(wx,wy){ return {x:(wx-cam.x)*cam.scale+W/2, y:(wy-cam.y)*cam.scale+H/2}; }
+function rectTarget(id){
+  const el=document.getElementById(id); if(!el) return null;
+  const r=el.getBoundingClientRect(); if(!r.width) return null;
+  return {x:r.left+r.width/2, y:r.top};
+}
+function firstPlanetTarget(){
+  const c=S.centers[0]; if(!c||!c.planets[0]) return null;
+  const pp=pPos(c,c.planets[0]);
+  return w2s(pp.x,pp.y-pRadius(c.planets[0])-4);
+}
+const TUT=[
+  {t:'Click here to buy your first planet!',
+    tg:()=>rectTarget('buyPlanetBtn'),
+    ok:()=>mode==='planet'||countPlanets()>0},
+  {t:'Now click one of the glowing rings to place it!',
+    tg:()=>{const c=S.centers[0]; return w2s(c.x,c.y-ringR(c,0));},
+    ok:()=>countPlanets()>0,
+    back:()=>mode!=='planet'&&countPlanets()===0},
+  {t:'It earns &#9733; every lap! Click your planet to open upgrades.',
+    tg:firstPlanetTarget,
+    ok:()=>!!(selected&&selected.type==='planet')},
+  {t:'Buy an upgrade! Speed is cheap &mdash; more laps = more &#9733;',
+    tg:()=>rectTarget('spdBtn')||firstPlanetTarget(),
+    ok:()=>tutUpgraded},
+  {t:'You&rsquo;re set! Buy planets, moons &amp; centers, chase 2:1 resonance&hellip; there is no goal &mdash; just make it spin. Press ? anytime for help.',
+    tg:()=>({x:W/2,y:170}), noArrow:true,
+    ok:()=>performance.now()-tutT0>9000},
+];
+function updateTut(){
+  const tip=$('tutTip');
+  if(S.tut===undefined||S.tut<0||S.tut>=TUT.length){ tip.style.display='none'; return; }
+  const st=TUT[S.tut];
+  if(st.back&&st.back()){ S.tut--; return; }
+  if(st.ok()){
+    S.tut++; tutT0=performance.now();
+    if(S.tut>=TUT.length){ S.tut=-1; tip.style.display='none'; save(); }
+    return;
+  }
+  const p=st.tg();
+  if(!p){ tip.style.display='none'; return; }
+  tip.querySelector('.label').innerHTML=st.t;
+  tip.querySelector('.arrow').style.display=st.noArrow?'none':'block';
+  tip.style.display='block';
+  tip.style.left=clamp(p.x,140,W-140)+'px';
+  tip.style.top=Math.max(4,p.y-(st.noArrow?40:86))+'px';
 }
 
 /* ---------------- save / load ---------------- */
@@ -880,13 +939,14 @@ function load(){
     if(!d||d.v!==3) return false;
     S=d;
     S.gNext=performance.now()+15000;
+    if(typeof S.tut==='undefined') S.tut = S.centers.some(c=>c.planets.length>0)? -1 : 0;
     if(S.glitched) document.body.classList.add('glitched');
     // offline earnings
     const away=(Date.now()-S.savedAt)/1000;
     if(away>60 && S.rateSaved>0){
       const gain=Math.floor(Math.min(away,8*3600)*S.rateSaved*0.5);
       if(gain>0){ S.stars+=gain; S.total+=gain;
-        setTimeout(()=>toast('&#127756; While you were away: +'+fmt(gain)+' ★'),800); }
+        setTimeout(()=>toast('While you were away: +'+fmt(gain)+' ★'),800); }
     }
     return true;
   }catch(e){ return false; }
@@ -904,6 +964,7 @@ function loop(now){
   updFx(dt);
   draw();
   renderHud();
+  updateTut();
   panelT+=dt; if(panelT>0.5){ panelT=0; if(selected) renderPanel(); }
   requestAnimationFrame(loop);
 }
@@ -914,7 +975,7 @@ if(!load()){ S=freshState(null); }
 // re-center single default center on load if offscreen
 S.centers.forEach(c=>{ c.x=clamp(c.x,40,W-40); c.y=clamp(c.y,40,H-40); });
 scanResonance();
-if(!S.seenHelp){ S.seenHelp=true; setTimeout(showHelp,400); }
+S.seenHelp=true; // tutorial arrows replace the auto help popup; "?" still opens it
 requestAnimationFrame(loop);
 </script>
 </body>
