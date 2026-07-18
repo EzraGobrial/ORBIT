@@ -238,6 +238,38 @@ const PTYPES=[
   {n:'Obsidian', d:'Black glass hiding a burning core.',             cost:25000, inc:16,  h:300, s:70, l:30, tex:'glowcore'},
   {n:'Prisma',   d:'A radiant P-Planet. Sheds P-Dust every lap — spend it to move planets.', cost:75000, inc:8, h:190, s:100, l:68, tex:'prism', dust:true},
 ];
+/* generate 100 more planets with escalating prices */
+(function(){
+  const pre=['Zeph','Kryo','Vorn','Novi','Umbra','Sola','Thal','Eris','Lyra','Ophi','Quor','Nyxa','Astra','Belu','Cindra','Dravon','Fenn','Galdo','Hexa','Mirel'];
+  const suf=['ara','ion','os','ette','ium','yx','aris','une','era','is','on','eth','ova','ax','ir'];
+  const texes=['craters','bands','cracks','patch','ring','shimmer','glowcore'];
+  const descs=[
+    'Storm winds that never sleep.',
+    'Its rings hum a note no one has named.',
+    'Oceans of liquid metal under glass skies.',
+    'Twelve seasons, all of them strange.',
+    'The clouds here fall upward.',
+    'Home to canyons deeper than moons.',
+    'It rains slow diamonds at dusk.',
+    'A magnetic heart that sings to compasses.',
+    'Frozen lightning veins the surface.',
+    'Its shadow arrives before it does.',
+  ];
+  let cost=75000, inc=8;
+  for(let i=0;i<100;i++){
+    cost=Math.floor(cost*1.5);
+    inc=Math.round(inc*1.42*10)/10;
+    const dust=(i%10===9);
+    let name=pre[i%pre.length]+suf[(i*7)%suf.length];
+    if(i>=60) name+=' II';
+    PTYPES.push({
+      n:name, d:dust?'A rare P-Planet. Sheds P-Dust every lap.':descs[i%descs.length],
+      cost:cost, inc:inc,
+      h:(i*47)%360, s:55+(i*13)%45, l:35+(i*11)%40,
+      tex:dust?'prism':texes[i%texes.length], dust:dust
+    });
+  }
+})();
 const MOVE_COST=5;
 function newCenter(x,y){ return {x:x,y:y,tier:0,planets:[]}; }
 function newPlanet(ring,angle,type){
@@ -900,7 +932,7 @@ function showPlanetPicker(){
     cards+='<div class="pcard '+(can?'':'cant')+'" onclick="UI.pickPlanet('+i+')">'
       +'<div class="pcircle" style="background:radial-gradient(circle at 35% 35%, hsl('+T.h+','+T.s+'%,'+Math.min(88,T.l+28)+'%), hsl('+T.h+','+T.s+'%,'+Math.max(15,T.l-8)+'%));box-shadow:0 0 12px hsla('+T.h+','+T.s+'%,60%,'+(T.dust?0.95:0.55)+');"></div>'
       +'<div class="pn">'+T.n+'</div><div class="pd">'+T.d+'</div>'
-      +'<div class="pd">'+(T.dust?'Income &times;'+T.inc+' + P-Dust':'Income &times;'+T.inc)+'</div>'
+      +'<div class="pd">Income &times;'+(T.inc>=1000?fmt(T.inc):T.inc)+(T.dust?' + P-Dust':'')+'</div>'
       +'<div class="pc">'+fmt(cost)+' &#9733;</div></div>';
   });
   showModal('<h2>Choose a planet</h2><div class="pgrid">'+cards+'</div><button class="mbtn" onclick="UI.hideModal()">Cancel</button>');
@@ -1022,7 +1054,7 @@ function renderPanel(){
     el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
       <h3>${T.n} <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
       <div style="font-size:12px;opacity:.75">${lapsMin(p).toFixed(1)} laps/min${T.dust?' &middot; <span style="color:#8fe8ff">sheds '+p.tier+' P-Dust/lap</span>':''}</div>
-      <div class="brk">Income/lap: ${Math.round(p.tier*p.tier*T.inc*10)/10} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
+      <div class="brk">Income/lap: ${T.inc>=1000?fmt(p.tier*p.tier*T.inc):Math.round(p.tier*p.tier*T.inc*10)/10} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
       <button id="growBtn" class="pbtn ${S.stars>=gCost&&p.tier<5?'':'cant'}" onclick="UI.act('grow')">Grow planet ${p.tier>=5?'(MAX)':'(bigger + more ★)'} <span class="c">${p.tier>=5?'':fmt(gCost)+' ★'}</span></button>
       <button id="spdBtn" class="pbtn ${S.stars>=sCost?'':'cant'}" onclick="UI.act('spd')">Speed +13% (${lapsMin(p).toFixed(1)}&rarr;${(lapsMin(p)*1.13).toFixed(1)} lpm) <span class="c">${fmt(sCost)} ★</span></button>
       ${spdHint?'<div class="hint">'+spdHint+'</div>':''}
