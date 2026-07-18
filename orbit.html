@@ -1207,9 +1207,6 @@ function renderAuth(view){
       <div id="authMsg" class="authErr"></div>
       <button class="authBtn" onclick="UI.authSignup()">Sign up</button>
       <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
-      <div class="authOr"><span>Or</span></div>
-      <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
-      <button class="authSoc" onclick="UI.authGoogle()">Login with Google</button>
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   } else {
     card.innerHTML=`<h2>Login</h2>
@@ -1218,9 +1215,6 @@ function renderAuth(view){
       <div id="authMsg" class="authErr"></div>
       <button class="authBtn" onclick="UI.authLogin()">Login</button>
       <div class="authAlt">Don't have an account? <a onclick="renderAuth('signup')">Sign up</a></div>
-      <div class="authOr"><span>Or</span></div>
-      <button class="authSoc fb" onclick="UI.authSocial()">Login with Facebook</button>
-      <button class="authSoc" onclick="UI.authGoogle()">Login with Google</button>
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   }
 }
