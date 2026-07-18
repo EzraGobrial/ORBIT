@@ -1198,8 +1198,9 @@ function hashPw(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCode
 function authMsg(t){ const m=document.getElementById('authMsg'); if(m) m.textContent=t; }
 function renderAuth(view){
   const card=document.getElementById('authCard');
+  const offNote=FB?'':'<div class="authErr" style="min-height:0;margin-bottom:8px;">OFFLINE MODE: cloud accounts unreachable (blocked network or ad-blocker?). Accounts made now save on this device only.</div>';
   if(view==='signup'){
-    card.innerHTML=`<h2>Sign up</h2>
+    card.innerHTML=`<h2>Sign up</h2>${offNote}
       <input id="auEmail" type="text" maxlength="16" placeholder="Username (shown on leaderboard)">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
       <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
@@ -1209,7 +1210,7 @@ function renderAuth(view){
       <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   } else {
-    card.innerHTML=`<h2>Login</h2>
+    card.innerHTML=`<h2>Login</h2>${offNote}
       <input id="auEmail" type="text" placeholder="Username">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
       <div id="authMsg" class="authErr"></div>
