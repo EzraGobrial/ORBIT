@@ -445,6 +445,7 @@ UI.shatter=function(){
   // remove higher index first
   const rm=[{c:A.c,p:A.p},{c:B.c,p:B.p}];
   rm.forEach(o=>{ const idx=o.c.planets.indexOf(o.p); if(idx>=0) o.c.planets.splice(idx,1); });
+  resoPairs=[]; resoNear=[]; scanResonance();
   selected=null; renderPanel();
   toast('Two planets shattered.');
   endCrash();
@@ -544,7 +545,8 @@ UI.doRebirth=function(){
   const keep={rebirths:S.rebirths+1, seenHelp:true, lifetime:S.lifetime||0};
   document.body.classList.remove('glitched');
   S=freshState(keep);
-  selected=null; mode=null; particles=[]; floats=[]; pairCd={}; earnLog=[];
+  selected=null; mode=null; movingRef=null; particles=[]; floats=[]; pairCd={}; earnLog=[];
+  resoPairs=[]; resoNear=[]; scanResonance();
   renderPanel();
   sChime();
   burst(W/2,H/2,'#d9a9ff',60);
@@ -713,6 +715,7 @@ function draw(){
     });
     // resonance threads + labels
     resoPairs.filter(r=>r.c===ci).forEach(r=>{
+      if(!c.planets[r.i]||!c.planets[r.j]) return;
       const p1=pPos(c,c.planets[r.i]), p2=pPos(c,c.planets[r.j]);
       const a=0.35+0.25*Math.sin(now/250);
       ctx.strokeStyle='hsla('+hue+',100%,75%,'+a+')'; ctx.lineWidth=1.5;
@@ -722,6 +725,7 @@ function draw(){
       ctx.fillText(r.p+':'+r.q+' ×2',mx,my-6);
     });
     resoNear.filter(r=>r.c===ci).forEach(r=>{
+      if(!c.planets[r.i]||!c.planets[r.j]) return;
       const p1=pPos(c,c.planets[r.i]), p2=pPos(c,c.planets[r.j]);
       ctx.setLineDash([3,6]); ctx.strokeStyle='rgba(160,175,255,0.25)'; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.setLineDash([]);
@@ -838,6 +842,7 @@ cv.addEventListener('pointerdown',e=>{
         const c2=S.centers[best.ci];
         p.ring=best.ring; p.a=(Math.atan2(y-c2.y,x-c2.x)+TAU)%TAU;
         c2.planets.push(p);
+        resoPairs=[]; resoNear=[]; scanResonance();
         selected=null; renderPanel(); sBuy();
         burst(c2.x+Math.cos(p.a)*ringR(c2,p.ring),c2.y+Math.sin(p.a)*ringR(c2,p.ring),'#8fe8ff',16);
         toast('Planet moved for '+MOVE_COST+' P-Dust.');
@@ -1333,15 +1338,17 @@ addEventListener('beforeunload',save);
 /* ---------------- main loop ---------------- */
 let last=performance.now(), panelT=0, resoT=0;
 function loop(now){
-  const dt=clamp((now-last)/1000,0,0.05); last=now;
-  resoT+=dt; if(resoT>0.5){ resoT=0; scanResonance(); }
-  updateCam(dt);
-  step(dt);
-  updFx(dt);
-  draw();
-  renderHud();
-  updateTut();
-  panelT+=dt; if(panelT>0.5){ panelT=0; if(selected) renderPanel(); }
+  try{
+    const dt=clamp((now-last)/1000,0,0.05); last=now;
+    resoT+=dt; if(resoT>0.5){ resoT=0; scanResonance(); }
+    updateCam(dt);
+    step(dt);
+    updFx(dt);
+    draw();
+    renderHud();
+    updateTut();
+    panelT+=dt; if(panelT>0.5){ panelT=0; if(selected) renderPanel(); }
+  }catch(e){ console.error('loop error:',e); } // never let one bad frame freeze the game
   requestAnimationFrame(loop);
 }
 
