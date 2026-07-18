@@ -1200,10 +1200,10 @@ function renderAuth(view){
   const card=document.getElementById('authCard');
   if(view==='signup'){
     card.innerHTML=`<h2>Sign up</h2>
-      <input id="auName" type="text" maxlength="16" placeholder="Display name (shown on leaderboard)">
-      <input id="auEmail" type="email" placeholder="Email">
+      <input id="auEmail" type="text" maxlength="16" placeholder="Username (shown on leaderboard)">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
       <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
+      <div class="authAlt" style="opacity:.6">No email needed &mdash; but there is no password reset, so don't forget it!</div>
       <div id="authMsg" class="authErr"></div>
       <button class="authBtn" onclick="UI.authSignup()">Sign up</button>
       <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
@@ -1213,9 +1213,8 @@ function renderAuth(view){
       <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
   } else {
     card.innerHTML=`<h2>Login</h2>
-      <input id="auEmail" type="email" placeholder="Email">
+      <input id="auEmail" type="text" placeholder="Username">
       <div class="pwRow"><input id="auPw" type="password" placeholder="Password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
-      <div class="authAlt"><a onclick="UI.authForgot()">Forgot password?</a></div>
       <div id="authMsg" class="authErr"></div>
       <button class="authBtn" onclick="UI.authLogin()">Login</button>
       <div class="authAlt">Don't have an account? <a onclick="renderAuth('signup')">Sign up</a></div>
@@ -1247,44 +1246,48 @@ UI.authGoogle=function(){
     cloudLoad().then(startGame).catch(startGame);
   }).catch(err=>authMsg(err.message));
 };
+function synthEmail(u){ return u.toLowerCase()+'@orbit.game'; }
 UI.authSignup=function(){
-  const e=document.getElementById('auEmail').value.trim().toLowerCase();
+  const u=document.getElementById('auEmail').value.trim();
   const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
-  const nm=document.getElementById('auName').value.trim();
-  if(nm.length<2||nm.length>16) return authMsg('Display name must be 2-16 characters.');
-  AUTH.name=nm;
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return authMsg('Enter a valid email.');
+  if(!/^[A-Za-z0-9_]{2,16}$/.test(u)) return authMsg('Username: 2-16 letters, numbers or _ only.');
   if(p1.length<6) return authMsg('Password must be at least 6 characters.');
   if(p1!==p2) return authMsg('Passwords do not match.');
+  const em=synthEmail(u);
+  AUTH.name=u;
   if(FB){
     authMsg('Creating account...');
-    FB.auth.createUserWithEmailAndPassword(e,p1).then(cred=>{
-      AUTH.cur=e; AUTH.uid=cred.user.uid;
+    FB.auth.createUserWithEmailAndPassword(em,p1).then(cred=>{
+      AUTH.cur=u; AUTH.uid=cred.user.uid;
       startGame();
-    }).catch(err=>authMsg(err.message));
+    }).catch(err=>authMsg(err.code==='auth/email-already-in-use'?'That username is taken.':err.message));
     return;
   }
   const acc=accGet();
-  if(acc[e]) return authMsg('That account already exists on this device. Try logging in.');
-  acc[e]={pw:hashPw(p1),created:Date.now()}; accSet(acc);
-  AUTH.cur=e; try{localStorage.setItem('orbitUser',e);}catch(err){}
+  if(acc[em]) return authMsg('That username already exists on this device.');
+  acc[em]={pw:hashPw(p1),created:Date.now()}; accSet(acc);
+  AUTH.cur=u; try{localStorage.setItem('orbitUser',u);}catch(err){}
   startGame();
 };
 UI.authLogin=function(){
-  const e=document.getElementById('auEmail').value.trim().toLowerCase();
+  const u=document.getElementById('auEmail').value.trim();
   const p=document.getElementById('auPw').value;
+  if(!u) return authMsg('Enter your username.');
+  const em=u.includes('@')? u.toLowerCase() : synthEmail(u);
   if(FB){
     authMsg('Logging in...');
-    FB.auth.signInWithEmailAndPassword(e,p).then(cred=>{
-      AUTH.cur=e; AUTH.uid=cred.user.uid;
+    FB.auth.signInWithEmailAndPassword(em,p).then(cred=>{
+      AUTH.cur=u.includes('@')? u.split('@')[0] : u; AUTH.uid=cred.user.uid;
       cloudLoad().then(startGame).catch(startGame);
-    }).catch(err=>authMsg(err.message));
+    }).catch(err=>authMsg(
+      (err.code==='auth/invalid-credential'||err.code==='auth/wrong-password'||err.code==='auth/user-not-found')?
+      'Wrong username or password.':err.message));
     return;
   }
   const acc=accGet();
-  if(!acc[e]) return authMsg('No account with that email on this device.');
-  if(acc[e].pw!==hashPw(p)) return authMsg('Wrong password.');
-  AUTH.cur=e; try{localStorage.setItem('orbitUser',e);}catch(err){}
+  if(!acc[em]) return authMsg('No account with that username on this device.');
+  if(acc[em].pw!==hashPw(p)) return authMsg('Wrong password.');
+  AUTH.cur=u; try{localStorage.setItem('orbitUser',u);}catch(err){}
   startGame();
 };
 UI.authGuest=function(){ try{localStorage.setItem('orbitGuest','1');}catch(e){} AUTH.cur=null; startGame(); };
