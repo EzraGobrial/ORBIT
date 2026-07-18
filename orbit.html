@@ -147,7 +147,7 @@
   <div class="small">(ad placeholder &mdash; real ads not hooked up yet)</div></div></div>
 <div id="toasts"></div>
 <div id="tutTip"><div class="label"></div><div class="arrow">&#9660;</div></div>
-<div id="verTag" style="position:absolute;bottom:4px;right:8px;z-index:5;font-size:10px;color:#3a4470;pointer-events:none;">v16</div>
+<div id="verTag" style="position:absolute;bottom:4px;right:8px;z-index:5;font-size:10px;color:#3a4470;pointer-events:none;">v17</div>
 <div id="authWrap"><div id="authCard"></div></div>
 
 <script>
@@ -1003,7 +1003,7 @@ function showHelp(){
   <li>Orbits from different centers can overlap — rings glow <b style="color:#ff7070">red</b>. If planets collide you can save them&hellip; for a price. Drag centers to fix spacing.</li>
   <li>Rebirth resets all for a permanent &times;1.5 multiplier.</li>
   <li>Prisma planets shed <b style="color:#8fe8ff">P-Dust</b> every lap &mdash; spend it to move planets between rings.</li>
-  <li>There is no goal. Just make it spin.</li>
+  <li>Grow your solar system and climb the leaderboard!</li>
   </ul>
   <button class="mbtn" onclick="UI.hideModal()">Spin on</button>
   <div style="font-size:11px;opacity:.4;margin-top:6px;cursor:pointer" onclick="UI.hardReset()">hard reset save</div>`);
@@ -1165,7 +1165,7 @@ const TUT=[
   {t:'Last thing: grab a boost here. Your first one is FREE!',
     tg:()=>rectTarget('boostBtn'),
     ok:()=>S.boostUsed||boostActive()},
-  {t:'You&rsquo;re set! Buy planets, moons &amp; centers, chase 2:1 resonance&hellip; there is no goal &mdash; just make it spin. Press ? anytime for help.',
+  {t:'You&rsquo;re set! Have fun, grow your solar system, and climb the leaderboard! Press ? anytime for help.',
     tg:()=>({x:W/2,y:170}), noArrow:true,
     ok:()=>performance.now()-tutT0>9000},
 ];
