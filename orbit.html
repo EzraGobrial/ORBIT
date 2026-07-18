@@ -147,6 +147,7 @@
   <div class="small">(ad placeholder &mdash; real ads not hooked up yet)</div></div></div>
 <div id="toasts"></div>
 <div id="tutTip"><div class="label"></div><div class="arrow">&#9660;</div></div>
+<div id="verTag" style="position:absolute;bottom:4px;right:8px;z-index:5;font-size:10px;color:#3a4470;pointer-events:none;">v16</div>
 <div id="authWrap"><div id="authCard"></div></div>
 
 <script>
@@ -300,7 +301,7 @@ const ringCount=c=>2+c.tier;
 const maxRings=6;
 const pRadius=p=>5.5+p.tier*2.6;
 const cRadius=c=>13+c.tier*3.5;
-const pSpeed=p=>TAU*(5/60)*Math.pow(1.13,p.spdLvl)*(1-0.03*p.ring)*(p.snapMul||1); // rad/s
+const pSpeed=p=>TAU*(5/60)*Math.pow(1.13,p.spdLvl)*(1-0.03*p.ring)*(p.snapMul||1)*spdBoostMult(); // rad/s
 const lapsMin=p=>pSpeed(p)/TAU*60;
 
 /* costs */
@@ -346,7 +347,8 @@ function moonMult(p){
   return m;
 }
 function boostActive(){ return S.boost&&Date.now()<S.boost.until; }
-function boostMult(){ return boostActive()? S.boost.mult:1; }
+function boostMult(){ return (boostActive()&&S.boost.kind!=='spd')? S.boost.mult:1; }
+function spdBoostMult(){ return (boostActive()&&S.boost.kind==='spd')? S.boost.mult:1; }
 function tutActive(){ return typeof S.tut==='number'&&S.tut>=0; }
 function freePlanet(t){ return tutActive()&&countPlanets()===0&&t===0; }
 function freeUpgrade(){ return tutActive()&&!tutUpgraded; }
@@ -965,23 +967,28 @@ UI.showBoosts=function(){
     return;
   }
   const r=Math.max(S.rate||0,0.5);
-  const opts=[{m:2,min:10,c:Math.max(100,Math.floor(r*180))},{m:3,min:5,c:Math.max(300,Math.floor(r*400))},{m:5,min:2,c:Math.max(1000,Math.floor(r*900))}];
+  const opts=[
+    {k:'spd',m:2,min:5,c:Math.max(100,Math.floor(r*90)),label:'2x Speed'},
+    {k:'inc',m:2,min:10,c:Math.max(100,Math.floor(r*180)),label:'2x Stars'},
+    {k:'inc',m:3,min:5, c:Math.max(300,Math.floor(r*400)),label:'3x Stars'},
+    {k:'inc',m:5,min:2, c:Math.max(1000,Math.floor(r*900)),label:'5x Stars'},
+  ];
   let html='';
   opts.forEach((o,i)=>{
     const free=(!S.boostUsed&&i===0);
-    html+='<button class="mbtn" onclick="UI.buyBoost('+o.m+','+o.min+','+(free?0:o.c)+')">'+o.m+'x stars for '+o.min+' min &mdash; '+(free?'<b style="color:#8fe8ff">FREE (first time!)</b>':fmt(o.c)+' &#9733;')+'</button>';
+    html+='<button class="mbtn" onclick="UI.buyBoost(\''+o.k+'\','+o.m+','+o.min+','+(free?0:o.c)+')">'+o.label+' for '+o.min+' min &mdash; '+(free?'<b style="color:#8fe8ff">FREE (first time!)</b>':fmt(o.c)+' &#9733;')+'</button>';
   });
-  showModal('<h2>Boosts</h2><p style="font-size:12px;opacity:.7">Multiply ALL star income for a while.</p>'+html+'<button class="mbtn" onclick="UI.hideModal()">Close</button>');
+  showModal('<h2>Boosts</h2><p style="font-size:12px;opacity:.7">Speed boosts spin planets faster. Star boosts multiply income.</p>'+html+'<button class="mbtn" onclick="UI.hideModal()">Close</button>');
 };
-UI.buyBoost=function(m,min,cost){
+UI.buyBoost=function(k,m,min,cost){
   if(boostActive()) return;
   if(cost>0&&S.stars<cost){ toast('Not enough stars!'); return; }
   S.stars-=cost;
   S.boostUsed=true;
-  S.boost={mult:m,until:Date.now()+min*60000};
+  S.boost={kind:k,mult:m,until:Date.now()+min*60000};
   hideModal(); sChime();
   burst(W/2,H/2,'#ffd75a',30);
-  toast(m+'x boost active for '+min+' minutes!');
+  toast(m+'x '+(k==='spd'?'speed':'star')+' boost active for '+min+' minutes!');
 };
 $('muteBtn').onclick=()=>{ muted=!muted; $('muteBtn').innerHTML=muted?'Sound: off':'Sound: on'; };
 $('helpBtn').onclick=()=>showHelp();
@@ -1117,7 +1124,7 @@ function renderHud(){
   const bb=$('boostBtn');
   if(boostActive()){
     const s=Math.ceil((S.boost.until-Date.now())/1000);
-    bb.innerHTML='Boost '+S.boost.mult+'x<span class="cost">'+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'</span>';
+    bb.innerHTML=S.boost.mult+'x '+(S.boost.kind==='spd'?'Speed':'Stars')+'<span class="cost">'+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'</span>';
   } else bb.innerHTML='Boosts'+(!S.boostUsed?'<span class="cost">first one FREE</span>':'');
   bc.classList.toggle('cant',S.stars<costCenter());
   bp.classList.toggle('active',mode==='planet');
@@ -1395,6 +1402,7 @@ function load(){
     if(typeof S.dust==='undefined') S.dust=0;
     if(typeof S.lifetime==='undefined') S.lifetime=S.total||0;
     if(!S.boost) S.boost={mult:1,until:0};
+    if(!S.boost.kind) S.boost.kind='inc';
     if(typeof S.boostUsed==='undefined') S.boostUsed=true; // existing players skip the free-boost tutorial
     S.centers.forEach(c=>c.planets.forEach(p=>{
       if(typeof p.type==='undefined') p.type=0;
