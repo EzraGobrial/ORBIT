@@ -272,7 +272,7 @@ const lapsMin=p=>pSpeed(p)/TAU*60;
 /* costs */
 function countPlanets(){ return S.centers.reduce((a,c)=>a+c.planets.length,0); }
 function countMoons(){ return S.centers.reduce((a,c)=>a+c.planets.reduce((b,p)=>b+p.moons.length,0),0); }
-const costPlanet=t=>Math.floor(PTYPES[t||0].cost*Math.pow(1.65,countPlanets()));
+const costPlanet=t=>PTYPES[t||0].cost;
 const costCenter=()=>Math.floor(600*Math.pow(4.5,S.centers.length-1));
 const costGrow=p=>Math.floor(25*Math.pow(2.3,p.tier-1)+ (p.tier>=5?1e18:0));
 const costSpd=p=>Math.floor(15*Math.pow(1.85,p.spdLvl));
