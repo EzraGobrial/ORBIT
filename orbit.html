@@ -1037,9 +1037,9 @@ function renderHud(){
   const anyDust=S.dust>0||S.centers.some(c=>c.planets.some(p=>PTYPES[p.type||0].dust));
   $('dustLine').textContent=anyDust? fmt(S.dust)+' P-Dust':'';
   const bp=$('buyPlanetBtn'), bc=$('buyCenterBtn');
-  bp.innerHTML='Buy Planet<span class="cost">from '+fmt(costPlanet(0))+' ★</span>';
+  bp.innerHTML='Buy Planet';
   bc.innerHTML='Buy Center<span class="cost">'+fmt(costCenter())+' ★</span>';
-  bp.classList.toggle('cant',S.stars<costPlanet(0));
+  bp.classList.remove('cant');
   bc.classList.toggle('cant',S.stars<costCenter());
   bp.classList.toggle('active',mode==='planet');
   bc.classList.toggle('active',mode==='center');
