@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ORBIT</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05060f;font-family:'Segoe UI',system-ui,sans-serif;user-select:none;-webkit-user-select:none;}
+  canvas{position:absolute;top:0;left:0;}
+  #bgcv{z-index:0;} #cv{z-index:1;}
+  .hud{position:absolute;z-index:10;color:#dfe6ff;}
+  #starsBox{top:14px;left:16px;font-size:26px;font-weight:600;letter-spacing:1px;text-shadow:0 0 12px rgba(255,215,90,.55);}
+  #starsBox .star{color:#ffd75a;}
+  #multLine{font-size:13px;opacity:.75;font-weight:400;margin-top:2px;}
+  #rateLine{font-size:12px;opacity:.55;font-weight:400;}
+  #topRight{top:14px;right:16px;display:flex;gap:8px;align-items:flex-start;}
+  .iconBtn{background:rgba(30,36,70,.75);border:1px solid rgba(120,140,255,.25);color:#dfe6ff;border-radius:10px;
+    padding:8px 12px;font-size:15px;cursor:pointer;transition:background .15s;}
+  .iconBtn:hover{background:rgba(50,60,110,.85);}
+  #shop{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10;}
+  .shopBtn{background:linear-gradient(180deg,rgba(40,48,95,.92),rgba(24,28,58,.92));border:1px solid rgba(130,150,255,.35);
+    color:#eef2ff;border-radius:14px;padding:10px 18px;font-size:15px;cursor:pointer;text-align:center;min-width:120px;
+    box-shadow:0 4px 18px rgba(0,0,0,.4);transition:transform .1s, box-shadow .15s;}
+  .shopBtn:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(80,110,255,.25);}
+  .shopBtn .cost{display:block;font-size:12px;color:#ffd75a;margin-top:2px;}
+  .shopBtn.cant{opacity:.45;cursor:default;} .shopBtn.cant:hover{transform:none;}
+  .shopBtn.active{outline:2px solid #7fd4ff;}
+  #panel{position:absolute;right:16px;bottom:14px;z-index:11;width:270px;background:rgba(14,17,36,.94);
+    border:1px solid rgba(130,150,255,.3);border-radius:14px;padding:14px 16px;color:#dfe6ff;display:none;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);font-size:13px;}
+  #panel h3{margin:0 0 6px;font-size:16px;color:#fff;}
+  #panel .brk{background:rgba(255,255,255,.05);border-radius:8px;padding:7px 9px;margin:8px 0;font-size:12px;line-height:1.5;}
+  #panel .pbtn{display:block;width:100%;margin:6px 0;background:rgba(55,65,120,.8);border:1px solid rgba(140,160,255,.35);
+    color:#eef2ff;border-radius:9px;padding:8px 10px;font-size:13px;cursor:pointer;text-align:left;}
+  #panel .pbtn:hover{background:rgba(75,90,160,.9);}
+  #panel .pbtn.cant{opacity:.4;cursor:default;}
+  #panel .pbtn .c{color:#ffd75a;float:right;}
+  #panel .hint{color:#7fd4ff;font-size:11px;}
+  #panel .close{position:absolute;top:8px;right:12px;cursor:pointer;opacity:.6;font-size:15px;}
+  #rebirthBar{position:absolute;left:16px;bottom:14px;z-index:10;}
+  #rebirthBtn{background:linear-gradient(180deg,#3a2a6e,#241a48);border:1px solid rgba(190,140,255,.5);color:#f0e6ff;
+    border-radius:14px;padding:10px 18px;font-size:15px;cursor:pointer;box-shadow:0 0 18px rgba(150,80,255,.25);}
+  #rebirthBtn:hover{box-shadow:0 0 26px rgba(170,100,255,.45);}
+  #rebirthBtn.locked{opacity:.55;}
+  #modalWrap{position:fixed;inset:0;z-index:50;background:rgba(3,4,10,.72);display:none;align-items:center;justify-content:center;}
+  #modal{background:rgba(18,21,44,.98);border:1px solid rgba(140,160,255,.4);border-radius:18px;padding:26px 30px;
+    color:#eef2ff;max-width:400px;text-align:center;box-shadow:0 10px 50px rgba(0,0,0,.7);}
+  #modal h2{margin:0 0 10px;font-size:22px;}
+  #modal .mbtn{display:block;width:100%;margin:8px 0;background:rgba(55,65,120,.85);border:1px solid rgba(140,160,255,.4);
+    color:#fff;border-radius:11px;padding:12px;font-size:15px;cursor:pointer;}
+  #modal .mbtn:hover{background:rgba(80,95,170,.95);}
+  #modal .mbtn.danger{background:rgba(120,40,50,.8);border-color:rgba(255,120,120,.4);}
+  #modal .mbtn.cant{opacity:.4;cursor:default;}
+  #modal ul{text-align:left;font-size:14px;line-height:1.9;padding-left:6px;list-style:none;margin:10px 0;}
+  #toasts{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;}
+  .toast{background:rgba(20,24,50,.92);border:1px solid rgba(140,160,255,.4);color:#eef2ff;border-radius:10px;
+    padding:8px 16px;font-size:14px;animation:tIn .25s ease-out;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+  @keyframes tIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:none;}}
+  #hintLine{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:9;color:#8fa0d8;font-size:14px;
+    background:rgba(10,12,26,.7);padding:6px 14px;border-radius:9px;pointer-events:none;}
+  /* ---- glitch ---- */
+  body.gwave #cv{animation:gShake .12s infinite;}
+  body.gwave .hud, body.gwave #shop{animation:gHue .2s infinite;}
+  @keyframes gShake{0%{transform:translate(0,0);}25%{transform:translate(-4px,2px);}50%{transform:translate(3px,-3px);}75%{transform:translate(-2px,-2px);}100%{transform:translate(2px,3px);}}
+  @keyframes gHue{0%{filter:hue-rotate(0deg);}50%{filter:hue-rotate(160deg) saturate(2);}100%{filter:hue-rotate(320deg);}}
+  body.glitched #starsBox{text-shadow:0 0 10px #ff3df0,0 0 20px #29f7ff;}
+  .scramble{color:#ff3df0 !important;}
+  #adOverlay{position:fixed;inset:0;z-index:60;background:#101018;display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;}
+  #adOverlay .adBox{background:linear-gradient(135deg,#22305e,#5a2a6e);border-radius:20px;padding:50px 60px;text-align:center;font-size:22px;box-shadow:0 0 60px rgba(120,80,255,.4);}
+  #adOverlay .small{font-size:13px;opacity:.6;margin-top:14px;}
+  /* ---- tutorial ---- */
+  #tutTip{position:absolute;z-index:35;pointer-events:none;display:none;transform:translateX(-50%);text-align:center;}
+  #tutTip .label{background:rgba(16,26,54,.97);border:2px solid #7fd4ff;color:#eaf4ff;border-radius:12px;
+    padding:9px 14px;font-size:14px;font-weight:600;max-width:260px;box-shadow:0 0 22px rgba(127,212,255,.35);}
+  #tutTip .arrow{font-size:30px;color:#7fd4ff;text-shadow:0 0 12px rgba(127,212,255,.8);line-height:1;
+    animation:tutBounce .7s ease-in-out infinite;}
+  @keyframes tutBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(9px);}}
+  /* ---- planet picker ---- */
+  .pgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0;max-height:52vh;overflow:auto;}
+  .pcard{background:rgba(40,48,95,.5);border:1px solid rgba(140,160,255,.3);border-radius:12px;padding:10px 8px;cursor:pointer;color:#eef2ff;text-align:center;}
+  .pcard:hover{background:rgba(60,72,140,.6);}
+  .pcard.cant{opacity:.4;}
+  .pcircle{width:40px;height:40px;border-radius:50%;margin:0 auto 6px;}
+  .pcard .pn{font-weight:600;font-size:14px;}
+  .pcard .pd{font-size:10px;opacity:.65;line-height:1.3;margin:3px 0;}
+  .pcard .pc{font-size:12px;color:#ffd75a;}
+  #dustLine{font-size:13px;color:#8fe8ff;font-weight:500;text-shadow:0 0 8px rgba(120,220,255,.5);}
+  /* ---- auth ---- */
+  #authWrap{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center,#0b1030 0%,#05060f 75%);}
+  #authCard{width:330px;background:rgba(14,18,40,.97);border:1px solid rgba(130,150,255,.35);border-radius:18px;
+    padding:28px 30px;color:#eef2ff;box-shadow:0 0 60px rgba(90,120,255,.25);text-align:center;}
+  #authCard h2{margin:0 0 18px;font-size:26px;letter-spacing:1px;text-shadow:0 0 16px rgba(127,212,255,.4);}
+  #authCard input{width:100%;box-sizing:border-box;background:rgba(25,32,66,.8);border:1px solid rgba(130,150,255,.3);
+    border-radius:10px;color:#eef2ff;padding:11px 12px;font-size:14px;margin:7px 0;outline:none;}
+  #authCard input:focus{border-color:#7fd4ff;box-shadow:0 0 10px rgba(127,212,255,.3);}
+  .pwRow{position:relative;}
+  .pwRow input{padding-right:48px;}
+  .pwRow button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;
+    color:#8fa0d8;font-size:11px;cursor:pointer;}
+  .authBtn{width:100%;margin:10px 0 4px;background:linear-gradient(180deg,#3d6bff,#2947c9);border:none;border-radius:10px;
+    color:#fff;padding:12px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 18px rgba(60,100,255,.35);}
+  .authBtn:hover{filter:brightness(1.15);}
+  .authAlt{font-size:12px;opacity:.85;margin:8px 0;}
+  .authAlt a{color:#7fd4ff;cursor:pointer;}
+  .authOr{display:flex;align-items:center;gap:10px;margin:10px 0;opacity:.5;font-size:12px;}
+  .authOr:before,.authOr:after{content:'';flex:1;height:1px;background:rgba(140,160,255,.35);}
+  .authSoc{width:100%;margin:5px 0;background:rgba(25,32,66,.9);border:1px solid rgba(130,150,255,.3);border-radius:10px;
+    color:#eef2ff;padding:11px;font-size:14px;cursor:pointer;}
+  .authSoc.fb{background:#2f4a8f;}
+  .authSoc:hover{filter:brightness(1.2);}
+  .authErr{color:#ff8a9a;font-size:12px;min-height:14px;margin-top:4px;}
+  /* ---- leaderboard ---- */
+  .lbRow{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.04);border-radius:8px;padding:7px 10px;margin:4px 0;font-size:13px;text-align:left;}
+  .lbRow.me{border:1px solid #7fd4ff;background:rgba(127,212,255,.08);}
+  .lbRank{width:20px;opacity:.7;font-weight:600;}
+  .lbName{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lbScore{color:#ffd75a;white-space:nowrap;}
+  .lbRb{opacity:.55;font-size:11px;white-space:nowrap;}
+</style>
+</head>
+<body>
+<canvas id="bgcv"></canvas>
+<canvas id="cv"></canvas>
+
+<div class="hud" id="starsBox"><span id="starsVal">0</span> <span class="star">&#9733;</span>
+  <div id="dustLine"></div><div id="multLine"></div><div id="rateLine"></div></div>
+<div class="hud" id="topRight">
+  <button class="iconBtn" id="lbBtn" onclick="UI.showLeaderboard()">Leaderboard</button>
+  <button class="iconBtn" id="muteBtn">Sound: on</button>
+  <button class="iconBtn" id="helpBtn">?</button>
+  <button class="iconBtn" id="logoutBtn" style="display:none" onclick="UI.logout()"></button>
+</div>
+<div id="hintLine" style="display:none;"></div>
+<div id="shop">
+  <button class="shopBtn" id="buyPlanetBtn"></button>
+  <button class="shopBtn" id="buyCenterBtn"></button>
+  <button class="shopBtn" id="boostBtn"></button>
+</div>
+<div id="rebirthBar"><button id="rebirthBtn"></button></div>
+<div id="panel"></div>
+<div id="modalWrap"><div id="modal"></div></div>
+<div id="adOverlay"><div class="adBox">YOUR AD HERE<div id="adCount" style="font-size:40px;margin-top:12px;">5</div>
+  <div class="small">(ad placeholder &mdash; real ads not hooked up yet)</div></div></div>
+<div id="toasts"></div>
+<div id="tutTip"><div class="label"></div><div class="arrow">&#9660;</div></div>
+<div id="verTag" style="position:absolute;bottom:4px;right:8px;z-index:5;font-size:10px;color:#3a4470;pointer-events:none;">v17</div>
+<div id="authWrap"><div id="authCard"></div></div>
+
+<script>
+'use strict';
+/* =============== ORBIT — an incremental with no goal =============== */
+const TAU = Math.PI*2;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const bgcv = document.getElementById('bgcv'), bgx = bgcv.getContext('2d');
+let W=0,H=0;
+function resize(){
+  W=innerWidth; H=innerHeight;
+  cv.width=W; cv.height=H; bgcv.width=W; bgcv.height=H;
+  drawStarfield();
+}
+function drawStarfield(){
+  bgx.fillStyle='#05060f'; bgx.fillRect(0,0,W,H);
+  for(let i=0;i<180;i++){
+    const x=Math.random()*W,y=Math.random()*H,r=Math.random()*1.1+0.2;
+    bgx.fillStyle='rgba(200,215,255,'+(Math.random()*0.45+0.08)+')';
+    bgx.beginPath(); bgx.arc(x,y,r,0,TAU); bgx.fill();
+  }
+}
+addEventListener('resize',resize);
+
+/* ---------------- utils ---------------- */
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const dist=(x1,y1,x2,y2)=>Math.hypot(x2-x1,y2-y1);
+const SUF=['','K','M','B','T','Qa','Qi','Sx','Sp'];
+function fmt(n){
+  if(!isFinite(n)) return '∞';
+  if(n<0) return '-'+fmt(-n);
+  if(n<1000) return String(Math.floor(n));
+  let t=0; while(n>=1000 && t<SUF.length-1){ n/=1000; t++; }
+  return (n<100? n.toFixed(1): Math.floor(n)) + SUF[t];
+}
+function angDiff(a,b){ let d=(a-b)%TAU; if(d>Math.PI)d-=TAU; if(d<-Math.PI)d+=TAU; return d; }
+
+/* ---------------- audio ---------------- */
+let AC=null, muted=false;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function tone(f,dur,type,vol,delay){
+  if(muted||!ac())return;
+  const t=AC.currentTime+(delay||0);
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type||'sine'; o.frequency.value=f;
+  g.gain.setValueAtTime(vol||0.12,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t+dur+0.02);
+}
+function sBuy(){ tone(520,.09,'triangle',.1); tone(780,.1,'triangle',.08,.05); }
+function sSpark(){ tone(rand(900,1400),.06,'sine',.045); }
+function sChime(){ tone(660,.25,'sine',.1); tone(990,.3,'sine',.09,.09); tone(1320,.4,'sine',.08,.18); }
+function sBoom(){
+  if(muted||!ac())return;
+  const t=AC.currentTime, len=AC.sampleRate*0.5, buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2);
+  const src=AC.createBufferSource(); src.buffer=buf;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420;
+  const g=AC.createGain(); g.gain.value=.5;
+  src.connect(f); f.connect(g); g.connect(AC.destination); src.start(t);
+  tone(70,.5,'sine',.25);
+}
+function sStatic(dur){
+  if(muted||!ac())return;
+  const t=AC.currentTime, len=AC.sampleRate*dur, buf=AC.createBuffer(1,len,AC.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++){ d[i]=(Math.random()*2-1)*(Math.random()>0.7?1:0.25); }
+  const src=AC.createBufferSource(); src.buffer=buf;
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1800; f.Q.value=0.4;
+  const g=AC.createGain(); g.gain.setValueAtTime(.22,t); g.gain.linearRampToValueAtTime(.04,t+dur);
+  src.connect(f); f.connect(g); g.connect(AC.destination); src.start(t);
+  tone(rand(100,200),dur*0.8,'sawtooth',.06);
+}
+
+/* ---------------- state ---------------- */
+const HUES=[46,196,285,140,10,330,220,70]; // per-center planet hue
+let S=null, paused=false, mode=null, selected=null, pendingType=0, movingRef=null,
+    mouse={x:-999,y:-999,wx:-999,wy:-999,downOn:null,dragC:-1};
+let particles=[], floats=[], pairCd={}, collisionLock=false;
+let scrambleTimer=null;
+
+/* planet catalog — each type has a name, look, cost and income multiplier */
+const PTYPES=[
+  {n:'Pebble',   d:'A humble grey rock. Everyone starts somewhere.', cost:10,    inc:1,   h:220, s:14, l:60, tex:'craters'},
+  {n:'Ember',    d:'Volcanic surface laced with glowing cracks.',    cost:40,    inc:1.6, h:18,  s:90, l:55, tex:'cracks'},
+  {n:'Aqualis',  d:'A banded ocean world.',                          cost:120,   inc:2.4, h:203, s:85, l:55, tex:'bands'},
+  {n:'Verdant',  d:'Continents of moss and jungle.',                 cost:350,   inc:3.5, h:130, s:65, l:48, tex:'patch'},
+  {n:'Halcyon',  d:'Golden, with a magnificent ring.',               cost:1000,  inc:5,   h:45,  s:85, l:60, tex:'ring'},
+  {n:'Vesper',   d:'Violet storms in permanent twilight.',           cost:3000,  inc:7.5, h:278, s:80, l:58, tex:'bands'},
+  {n:'Aurora',   d:'Shimmering polar lights wrap the whole globe.',  cost:9000,  inc:11,  h:168, s:90, l:55, tex:'shimmer'},
+  {n:'Obsidian', d:'Black glass hiding a burning core.',             cost:25000, inc:16,  h:300, s:70, l:30, tex:'glowcore'},
+  {n:'Prisma',   d:'A radiant P-Planet. Sheds P-Dust every lap — spend it to move planets.', cost:75000, inc:8, h:190, s:100, l:68, tex:'prism', dust:true},
+];
+/* generate 100 more planets with escalating prices */
+(function(){
+  const pre=['Zeph','Kryo','Vorn','Novi','Umbra','Sola','Thal','Eris','Lyra','Ophi','Quor','Nyxa','Astra','Belu','Cindra','Dravon','Fenn','Galdo','Hexa','Mirel'];
+  const suf=['ara','ion','os','ette','ium','yx','aris','une','era','is','on','eth','ova','ax','ir'];
+  const texes=['craters','bands','cracks','patch','ring','shimmer','glowcore'];
+  const descs=[
+    'Storm winds that never sleep.',
+    'Its rings hum a note no one has named.',
+    'Oceans of liquid metal under glass skies.',
+    'Twelve seasons, all of them strange.',
+    'The clouds here fall upward.',
+    'Home to canyons deeper than moons.',
+    'It rains slow diamonds at dusk.',
+    'A magnetic heart that sings to compasses.',
+    'Frozen lightning veins the surface.',
+    'Its shadow arrives before it does.',
+  ];
+  let cost=75000, inc=8;
+  for(let i=0;i<100;i++){
+    cost=Math.floor(cost*1.5);
+    inc=Math.round(inc*1.42*10)/10;
+    const dust=(i%10===9);
+    let name=pre[i%pre.length]+suf[(i*7)%suf.length];
+    if(i>=60) name+=' II';
+    PTYPES.push({
+      n:name, d:dust?'A rare P-Planet. Sheds P-Dust every lap.':descs[i%descs.length],
+      cost:cost, inc:inc,
+      h:(i*47)%360, s:55+(i*13)%45, l:35+(i*11)%40,
+      tex:dust?'prism':texes[i%texes.length], dust:dust
+    });
+  }
+})();
+const MOVE_COST=5;
+function newCenter(x,y){ return {x:x,y:y,tier:0,planets:[]}; }
+function newPlanet(ring,angle,type){
+  return {ring:ring,a:angle,spdLvl:0,tier:1,type:type||0,seed:Math.floor(Math.random()*1000),moons:[],phase:0,ecl:{}};
+}
+function newMoon(n,pSpd){ // slightly-off ratio; tune to snap
+  const base=[2,3,4][n%3];
+  return {a:rand(0,TAU),ratio:base+rand(0.13,0.34)*(Math.random()<.5?-1:1),tuned:false};
+}
+function freshState(prev){
+  const s={
+    v:3, stars:30, total:0, dust:0, lifetime: prev? prev.lifetime||0 : 0,
+    boost:{mult:1,until:0}, boostUsed: prev? !!prev.boostUsed : false,
+    rebirths: prev? prev.rebirths:0,
+    glitched:false, gNext:0,
+    centers:[newCenter(W/2,H/2)],
+    rate:0, savedAt:Date.now(), seenHelp: prev? prev.seenHelp:false,
+    tut: prev? -1 : 0,
+  };
+  return s;
+}
+const rbMult=()=>Math.pow(1.5,S.rebirths);
+
+/* geometry */
+const ringR=(c,i)=>58+i*46;
+const ringCount=c=>2+c.tier;
+const maxRings=6;
+const pRadius=p=>5.5+p.tier*2.6;
+const cRadius=c=>13+c.tier*3.5;
+const pSpeed=p=>TAU*(5/60)*Math.pow(1.13,p.spdLvl)*(1-0.03*p.ring)*(p.snapMul||1)*spdBoostMult(); // rad/s
+const lapsMin=p=>pSpeed(p)/TAU*60;
+
+/* costs */
+function countPlanets(){ return S.centers.reduce((a,c)=>a+c.planets.length,0); }
+function countMoons(){ return S.centers.reduce((a,c)=>a+c.planets.reduce((b,p)=>b+p.moons.length,0),0); }
+const costPlanet=t=>PTYPES[t||0].cost;
+const costCenter=()=>Math.floor(600*Math.pow(4.5,S.centers.length-1));
+const costGrow=p=>Math.floor(25*Math.pow(2.3,p.tier-1)+ (p.tier>=5?1e18:0));
+const costSpd=p=>Math.floor(15*Math.pow(1.85,p.spdLvl));
+const costMoon=p=>Math.floor(45*Math.pow(2.6,p.moons.length));
+const costTune=m=>60;
+const costGrowC=c=>Math.floor(250*Math.pow(3.2,c.tier));
+
+/* ---------------- resonance ---------------- */
+const RATIOS=[[2,1],[3,2],[3,1],[4,3],[5,2],[5,3],[4,1]];
+function ratioCheck(s1,s2){ // returns {p,q,err} best clean ratio, big/small order
+  const r=Math.max(s1,s2)/Math.min(s1,s2);
+  let best=null;
+  for(const [p,q] of RATIOS){
+    const t=p/q, err=Math.abs(r-t)/t;
+    if(!best||err<best.err) best={p:p,q:q,err:err};
+  }
+  return best;
+}
+// per-frame cached resonance info
+let resoPairs=[]; // {c,i,j,p,q}  planets i,j of center c locked
+let resoNear=[];  // {c,i,j,p,q}  close to locking
+function scanResonance(){
+  resoPairs=[]; resoNear=[];
+  S.centers.forEach((c,ci)=>{
+    for(let i=0;i<c.planets.length;i++) for(let j=i+1;j<c.planets.length;j++){
+      const b=ratioCheck(pSpeed(c.planets[i]),pSpeed(c.planets[j]));
+      if(!b) continue;
+      if(b.err<0.015) resoPairs.push({c:ci,i:i,j:j,p:b.p,q:b.q});
+      else if(b.err<0.08) resoNear.push({c:ci,i:i,j:j,p:b.p,q:b.q});
+    }
+  });
+}
+function planetResonant(ci,pi){ return resoPairs.some(r=>r.c===ci&&(r.i===pi||r.j===pi)); }
+function moonMult(p){
+  let m=1;
+  p.moons.forEach((mo,k)=>{ m += (mo.tuned?2:1); });
+  return m;
+}
+function boostActive(){ return S.boost&&Date.now()<S.boost.until; }
+function boostMult(){ return (boostActive()&&S.boost.kind!=='spd')? S.boost.mult:1; }
+function spdBoostMult(){ return (boostActive()&&S.boost.kind==='spd')? S.boost.mult:1; }
+function tutActive(){ return typeof S.tut==='number'&&S.tut>=0; }
+function freePlanet(t){ return tutActive()&&countPlanets()===0&&t===0; }
+function freeUpgrade(){ return tutActive()&&!tutUpgraded; }
+function planetIncome(c,ci,p,pi){ // stars per lap
+  const base=p.tier*p.tier*PTYPES[p.type||0].inc;
+  const mm=moonMult(p);
+  const rz=planetResonant(ci,pi)?2:1;
+  return base*mm*rz*rbMult()*boostMult();
+}
+
+/* ---------------- income rate tracking ---------------- */
+let earnLog=[]; // [t, amt]
+function earn(amt,x,y,txt,col){
+  S.stars+=amt; S.total+=amt; S.lifetime=(S.lifetime||0)+amt;
+  earnLog.push([performance.now(),amt]);
+  if(x!==undefined) floats.push({x:x,y:y,txt:(txt||'+'+fmt(amt)+'★'),age:0,col:col||'#ffd75a'});
+}
+function curRate(){
+  const now=performance.now(), cut=now-30000;
+  earnLog=earnLog.filter(e=>e[0]>cut);
+  const sum=earnLog.reduce((a,e)=>a+e[1],0);
+  return sum/Math.min(30,(now-startT)/1000+0.001);
+}
+let startT=performance.now();
+
+/* ---------------- world positions ---------------- */
+function pPos(c,p){ const r=ringR(c,p.ring); return {x:c.x+Math.cos(p.a)*r, y:c.y+Math.sin(p.a)*r}; }
+function mPos(c,p,m,k){
+  const pp=pPos(c,p), d=pRadius(p)+9+k*8;
+  return {x:pp.x+Math.cos(m.a)*d, y:pp.y+Math.sin(m.a)*d, d:d};
+}
+
+/* ---------------- simulation ---------------- */
+function step(dt){
+  if(paused) return;
+  S.centers.forEach((c,ci)=>{
+    c.planets.forEach((p,pi)=>{
+      const sp=pSpeed(p);
+      p.a+=sp*dt;
+      if(p.a>=TAU){
+        p.a-=TAU;
+        const inc=planetIncome(c,ci,p,pi);
+        const pp=pPos(c,p);
+        earn(inc,pp.x,pp.y-pRadius(p)-8);
+        if(PTYPES[p.type||0].dust){
+          S.dust+=p.tier;
+          floats.push({x:pp.x,y:pp.y-pRadius(p)-22,txt:'+'+p.tier+' P-Dust',age:0,col:'#8fe8ff'});
+        }
+      }
+      // moons
+      p.moons.forEach((m,k)=>{
+        m.a+=sp*m.ratio*dt; if(m.a>=TAU) m.a-=TAU;
+        // eclipse: moon between planet and center
+        const mp=mPos(c,p,m,k);
+        const aPM=Math.atan2(mp.y-c.y,mp.x-c.x);
+        const dc=dist(mp.x,mp.y,c.x,c.y), pc=ringR(c,p.ring);
+        if(Math.abs(angDiff(aPM,p.a))<0.05 && dc<pc){
+          if(!m.eclLock){
+            m.eclLock=true;
+            const bonus=Math.ceil(p.tier*p.tier*2*rbMult());
+            earn(bonus,mp.x,mp.y-10,'+'+fmt(bonus)+'★ eclipse!','#9fd8ff');
+            burst(mp.x,mp.y,'#9fd8ff',10);
+            tone(1180,.15,'sine',.06);
+          }
+        } else m.eclLock=false;
+      });
+    });
+  });
+  nearMissAndCrash(dt);
+  if(S.glitched) glitchTick();
+}
+
+/* near-miss + collisions between planets of different rings/centers */
+function nearMissAndCrash(dt){
+  const all=[];
+  S.centers.forEach((c,ci)=>c.planets.forEach((p,pi)=>{ const pp=pPos(c,p); all.push({c:c,ci:ci,p:p,pi:pi,x:pp.x,y:pp.y,r:pRadius(p)}); }));
+  const now=performance.now();
+  for(let i=0;i<all.length;i++) for(let j=i+1;j<all.length;j++){
+    const A=all[i],B=all[j];
+    if(A.ci===B.ci && A.p.ring===B.p.ring) continue;
+    const d=dist(A.x,A.y,B.x,B.y), s=A.r+B.r;
+    // crash — only across different centers (concentric rings never truly collide)
+    if(A.ci!==B.ci && d<s && now>A.p.phase && now>B.p.phase && !collisionLock){
+      triggerCollision(A,B); return;
+    }
+    // near miss
+    if(d>=s && d<s+22){
+      const key=A.ci+'.'+A.pi+'-'+B.ci+'.'+B.pi;
+      if(!pairCd[key]||now-pairCd[key]>2000){
+        pairCd[key]=now;
+        const amt=Math.max(1,Math.ceil((planetIncome(A.c,A.ci,A.p,A.pi)+planetIncome(B.c,B.ci,B.p,B.pi))*0.15));
+        const mx=(A.x+B.x)/2,my=(A.y+B.y)/2;
+        earn(amt,mx,my,'+'+fmt(amt)+'★ spark','#7fd4ff');
+        burst(mx,my,'#7fd4ff',8);
+        sSpark();
+      }
+    }
+  }
+}
+
+/* ---------------- collisions ---------------- */
+let pendingCrash=null;
+function triggerCollision(A,B){
+  collisionLock=true; paused=true; pendingCrash={A:A,B:B};
+  sBoom();
+  const fee=Math.max(50,Math.ceil(S.stars*0.12));
+  showModal(`<h2>Collision!</h2>
+    <p style="font-size:14px;opacity:.85">Two planets crossed paths. Irresponsible placement... or bold strategy?</p>
+    <button class="mbtn" onclick="UI.adRescue()">Watch ad to save them <span style="opacity:.6">(placeholder)</span></button>
+    <button class="mbtn ${S.stars>=fee?'':'cant'}" onclick="UI.payRescue(${fee})">Pay ${fmt(fee)} &#9733; to save them</button>
+    <button class="mbtn danger" onclick="UI.shatter()">Let them shatter</button>`);
+}
+function rescueCrash(){
+  if(!pendingCrash) return;
+  const now=performance.now();
+  pendingCrash.A.p.phase=now+60000; pendingCrash.B.p.phase=now+60000;
+  toast('Planets phased for 60s — drag a center to fix your layout!');
+  endCrash();
+}
+function endCrash(){ pendingCrash=null; collisionLock=false; paused=false; hideModal(); }
+window.UI = window.UI||{};
+UI.adRescue=function(){
+  hideModal();
+  const ov=document.getElementById('adOverlay'), cd=document.getElementById('adCount');
+  ov.style.display='flex'; let n=5; cd.textContent=n;
+  const iv=setInterval(()=>{ n--; cd.textContent=n;
+    if(n<=0){ clearInterval(iv); ov.style.display='none'; rescueCrash(); } },1000);
+};
+UI.payRescue=function(fee){ if(S.stars<fee) return; S.stars-=fee; rescueCrash(); };
+UI.shatter=function(){
+  if(!pendingCrash) return;
+  const {A,B}=pendingCrash;
+  const pa=pPos(A.c,A.p), pb=pPos(B.c,B.p);
+  burst(pa.x,pa.y,'#ff8866',26); burst(pb.x,pb.y,'#ff8866',26);
+  // remove higher index first
+  const rm=[{c:A.c,p:A.p},{c:B.c,p:B.p}];
+  rm.forEach(o=>{ const idx=o.c.planets.indexOf(o.p); if(idx>=0) o.c.planets.splice(idx,1); });
+  resoPairs=[]; resoNear=[]; scanResonance();
+  selected=null; renderPanel();
+  toast('Two planets shattered.');
+  endCrash();
+};
+
+/* ---------------- danger warning (ring overlap) ---------------- */
+function ringDanger(){
+  // returns set of "ci.ring" strings that are dangerous
+  const out={};
+  const occ=[]; // {ci,ring,r,maxPr}
+  S.centers.forEach((c,ci)=>{
+    const per={};
+    c.planets.forEach(p=>{ per[p.ring]=Math.max(per[p.ring]||0,pRadius(p)); });
+    for(const ring in per) occ.push({ci:ci,ring:+ring,R:ringR(c,+ring),pr:per[ring],c:c});
+  });
+  for(let i=0;i<occ.length;i++) for(let j=i+1;j<occ.length;j++){
+    const a=occ[i],b=occ[j];
+    if(a.ci===b.ci) continue;
+    const d=dist(a.c.x,a.c.y,b.c.x,b.c.y);
+    const minD=Math.max(0, Math.max(d-a.R-b.R, Math.abs(a.R-b.R)-d));
+    if(minD < a.pr+b.pr+4){ out[a.ci+'.'+a.ring]=1; out[b.ci+'.'+b.ring]=1; }
+  }
+  return out;
+}
+
+/* ---------------- glitch mode ---------------- */
+let gWaveUntil=0;
+function rollGlitch(){
+  if(Math.random()<0.01){ S.glitched=true; S.gNext=performance.now()+rand(15000,30000);
+    document.body.classList.add('glitched'); return true; }
+  return false;
+}
+function glitchTick(){
+  const now=performance.now();
+  if(now>S.gNext){ S.gNext=now+rand(60000,150000); glitchWave(); }
+}
+function glitchWave(){
+  const now=performance.now();
+  gWaveUntil=now+2600;
+  document.body.classList.add('gwave');
+  sStatic(1.4); setTimeout(()=>sStatic(0.8),1400);
+  // scramble the money
+  const el=document.getElementById('starsVal');
+  el.classList.add('scramble');
+  let ticks=0;
+  if(scrambleTimer) clearInterval(scrambleTimer);
+  scrambleTimer=setInterval(()=>{
+    ticks++;
+    let s=''; const L=6+Math.floor(Math.random()*6);
+    const chars='0123456789#$%&?!▓▒░';
+    for(let i=0;i<L;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+    el.textContent=s;
+    if(ticks>28){
+      clearInterval(scrambleTimer); scrambleTimer=null;
+      // land on new value: 0.05x .. 20x, log-uniform
+      const f=Math.pow(10,rand(-1.3,1.3));
+      const before=S.stars;
+      S.stars=Math.max(0,Math.floor(S.stars*f));
+      el.classList.remove('scramble');
+      const diff=S.stars-before;
+      toast(diff>=0? 'GLITCH: stars corrupted UP +'+fmt(diff)+' &#9733;' : 'GLITCH: stars corrupted DOWN '+fmt(diff)+' &#9733;');
+    }
+  },45);
+  setTimeout(()=>document.body.classList.remove('gwave'),2600);
+}
+
+/* ---------------- rebirth ---------------- */
+function rbReqs(){
+  return [
+    {t:'Earn '+fmt(25000)+' ★ total', ok:S.total>=25000, cur:fmt(S.total)+'/'+fmt(25000)},
+    {t:'Own 2 centers', ok:S.centers.length>=2, cur:S.centers.length+'/2'},
+    {t:'Own 6 planets', ok:countPlanets()>=6, cur:countPlanets()+'/6'},
+    {t:'Grow a planet to tier 4', ok:S.centers.some(c=>c.planets.some(p=>p.tier>=4)),
+      cur:(Math.max(0,...S.centers.flatMap(c=>c.planets.map(p=>p.tier)))||0)+'/4'},
+    {t:'Own 3 moons total', ok:countMoons()>=3, cur:countMoons()+'/3'},
+  ];
+}
+const rbReady=()=>rbReqs().every(r=>r.ok);
+UI.rebirthClick=function(){
+  const reqs=rbReqs();
+  if(!rbReady()){
+    showModal('<h2>Rebirth <span style="font-size:14px;opacity:.6">(locked)</span></h2>'+
+      '<p style="font-size:13px;opacity:.8">Reset everything for a permanent &times;1.5 multiplier. Unlock by:</p><ul>'+
+      reqs.map(r=>'<li>'+(r.ok?'&#10003;':'&ndash;')+' '+r.t+' <span style="opacity:.55;font-size:12px">('+r.cur+')</span></li>').join('')+
+      '</ul><button class="mbtn" onclick="UI.hideModal()">Back</button>');
+    return;
+  }
+  showModal('<h2>Rebirth?</h2><p style="font-size:14px">Everything resets — stars, planets, centers, moons.<br><br>'+
+    'You keep: permanent <b style="color:#d9a9ff">&times;1.5</b> multiplier (forever, stacks).<br>'+
+    'Current: &times;'+rbMult().toFixed(2)+' &rarr; &times;'+(rbMult()*1.5).toFixed(2)+'</p>'+
+    '<button class="mbtn" onclick="UI.doRebirth()">Rebirth</button>'+
+    '<button class="mbtn" onclick="UI.hideModal()">Not yet</button>');
+};
+UI.doRebirth=function(){
+  hideModal();
+  const wasGlitched=S.glitched;
+  const keep={rebirths:S.rebirths+1, seenHelp:true, lifetime:S.lifetime||0, boostUsed:S.boostUsed};
+  document.body.classList.remove('glitched');
+  S=freshState(keep);
+  selected=null; mode=null; movingRef=null; particles=[]; floats=[]; pairCd={}; earnLog=[];
+  resoPairs=[]; resoNear=[]; scanResonance();
+  renderPanel();
+  sChime();
+  burst(W/2,H/2,'#d9a9ff',60);
+  toast('Reborn! Permanent multiplier now &times;'+rbMult().toFixed(2));
+  if(rollGlitch()){
+    setTimeout(()=>{ sStatic(1.2); toast('s0mething went wr0ng&hellip;'); },2500);
+  } else if(wasGlitched){
+    toast('The corruption is gone. Reality restored.');
+  }
+  save();
+};
+
+/* ---------------- particles / floats ---------------- */
+function burst(x,y,col,n){
+  for(let i=0;i<n;i++){
+    const a=rand(0,TAU), v=rand(20,140);
+    particles.push({x:x,y:y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,age:0,life:rand(.4,1),col:col,r:rand(1,3)});
+  }
+}
+function updFx(dt){
+  particles=particles.filter(p=>{ p.age+=dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.97; p.vy*=0.97; return p.age<p.life; });
+  floats=floats.filter(f=>{ f.age+=dt; f.y-=28*dt; return f.age<1.2; });
+}
+
+/* ---------------- camera (auto zoom-out) ---------------- */
+const cam={scale:1,x:0,y:0};
+function camTargets(){
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  S.centers.forEach(c=>{
+    const e=ringR(c,ringCount(c)-1)+55;
+    minX=Math.min(minX,c.x-e); maxX=Math.max(maxX,c.x+e);
+    minY=Math.min(minY,c.y-e); maxY=Math.max(maxY,c.y+e);
+  });
+  // everything fits on screen as-is? keep identity view
+  if(minX>=0&&maxX<=W&&minY>=60&&maxY<=H-70) return {s:1,x:W/2,y:H/2};
+  const bw=maxX-minX, bh=(maxY-minY)+140; // padding for HUD
+  return {s:Math.min(1,W/bw,H/bh), x:(minX+maxX)/2, y:(minY+maxY)/2};
+}
+function updateCam(dt){
+  const t=camTargets(), k=Math.min(1,dt*2.5);
+  cam.scale+=(t.s-cam.scale)*k; cam.x+=(t.x-cam.x)*k; cam.y+=(t.y-cam.y)*k;
+}
+function toWorld(sx,sy){ return {x:(sx-W/2)/cam.scale+cam.x, y:(sy-H/2)/cam.scale+cam.y}; }
+
+/* ---------------- planet textures ---------------- */
+function drawTex(pp,pr,p,T,now){
+  const sd=p.seed||0;
+  ctx.save();
+  ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.clip();
+  if(T.tex==='craters'){
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,35%,0.45)';
+    for(let i=0;i<3;i++){
+      const ang=sd*0.7+i*2.1, d=pr*0.5;
+      ctx.beginPath(); ctx.arc(pp.x+Math.cos(ang)*d,pp.y+Math.sin(ang)*d,pr*(0.16+0.07*((sd+i)%3)),0,TAU); ctx.fill();
+    }
+  } else if(T.tex==='bands'){
+    ctx.translate(pp.x,pp.y); ctx.rotate(0.35);
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,30%,0.35)';
+    ctx.fillRect(-pr,-pr*0.45,pr*2,pr*0.28);
+    ctx.fillRect(-pr,pr*0.1,pr*2,pr*0.22);
+  } else if(T.tex==='cracks'){
+    ctx.strokeStyle='hsla(35,100%,70%,0.85)'; ctx.lineWidth=Math.max(1,pr*0.08);
+    for(let i=0;i<3;i++){
+      const a0=sd*0.3+i*2.2;
+      ctx.beginPath();
+      ctx.moveTo(pp.x+Math.cos(a0)*pr,pp.y+Math.sin(a0)*pr);
+      ctx.quadraticCurveTo(pp.x+Math.cos(a0+2)*pr*0.3,pp.y+Math.sin(a0+2)*pr*0.3,
+        pp.x+Math.cos(a0+2.8)*pr,pp.y+Math.sin(a0+2.8)*pr);
+      ctx.stroke();
+    }
+  } else if(T.tex==='patch'){
+    ctx.fillStyle='hsla('+T.h+','+T.s+'%,66%,0.5)';
+    for(let i=0;i<3;i++){
+      const ang=sd*0.9+i*2.3, d=pr*0.45;
+      ctx.beginPath(); ctx.ellipse(pp.x+Math.cos(ang)*d,pp.y+Math.sin(ang)*d,pr*0.4,pr*0.22,ang,0,TAU); ctx.fill();
+    }
+  } else if(T.tex==='shimmer'){
+    const ra=now/700+sd;
+    ctx.fillStyle='hsla('+T.h+',100%,85%,0.35)';
+    ctx.beginPath(); ctx.moveTo(pp.x,pp.y);
+    ctx.arc(pp.x,pp.y,pr,ra%TAU,(ra+1.2)%TAU); ctx.closePath(); ctx.fill();
+  } else if(T.tex==='glowcore'){
+    const g2=ctx.createRadialGradient(pp.x,pp.y,0,pp.x,pp.y,pr*0.7);
+    g2.addColorStop(0,'hsla('+T.h+',100%,70%,0.9)');
+    g2.addColorStop(1,'hsla('+T.h+',100%,50%,0)');
+    ctx.fillStyle=g2; ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.fill();
+  } else if(T.tex==='prism'){
+    const tw=0.5+0.5*Math.sin(now/180+sd);
+    ctx.fillStyle='hsla(190,100%,'+(72+tw*16)+'%,0.85)';
+    for(let i=0;i<5;i++){
+      const ang=now/900+i*TAU/5+sd;
+      ctx.beginPath(); ctx.arc(pp.x+Math.cos(ang)*pr*0.55,pp.y+Math.sin(ang)*pr*0.55,pr*0.13,0,TAU); ctx.fill();
+    }
+  }
+  ctx.restore();
+  if(T.tex==='ring'){
+    ctx.save(); ctx.translate(pp.x,pp.y); ctx.rotate(-0.45); ctx.scale(1,0.38);
+    ctx.strokeStyle='hsla('+T.h+','+T.s+'%,75%,0.6)'; ctx.lineWidth=Math.max(1.5,pr*0.16);
+    ctx.beginPath(); ctx.arc(0,0,pr*1.65,0,TAU); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* ---------------- rendering ---------------- */
+function draw(){
+  // trail fade
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle='rgba(5,6,15,0.32)'; ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(W/2,H/2); ctx.scale(cam.scale,cam.scale); ctx.translate(-cam.x,-cam.y);
+  const danger=ringDanger();
+  const now=performance.now();
+
+  S.centers.forEach((c,ci)=>{
+    const hue=HUES[ci%HUES.length];
+    // rings
+    for(let i=0;i<ringCount(c);i++){
+      const d=danger[ci+'.'+i];
+      ctx.beginPath(); ctx.arc(c.x,c.y,ringR(c,i),0,TAU);
+      ctx.strokeStyle=d? 'rgba(255,80,80,'+(0.25+0.2*Math.sin(now/150))+')' : 'rgba(140,160,255,0.10)';
+      ctx.lineWidth=d?2:1; ctx.stroke();
+    }
+    // center body
+    ctx.save();
+    ctx.shadowColor='rgba(255,240,200,0.9)'; ctx.shadowBlur=30;
+    const g=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,cRadius(c));
+    g.addColorStop(0,'#fff8e0'); g.addColorStop(0.6,'#ffd75a'); g.addColorStop(1,'rgba(255,160,60,0.6)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.arc(c.x,c.y,cRadius(c),0,TAU); ctx.fill();
+    ctx.restore();
+    if(selected && selected.type==='center' && selected.c===ci){
+      ctx.beginPath(); ctx.arc(c.x,c.y,cRadius(c)+6,0,TAU); ctx.strokeStyle='#7fd4ff'; ctx.lineWidth=2; ctx.stroke();
+    }
+    // planets
+    c.planets.forEach((p,pi)=>{
+      const pp=pPos(c,p), pr=pRadius(p);
+      const phased=now<p.phase;
+      const T=PTYPES[p.type||0];
+      ctx.save();
+      ctx.globalAlpha=phased? 0.35+0.2*Math.sin(now/90):1;
+      ctx.shadowColor='hsla('+T.h+','+T.s+'%,65%,0.9)'; ctx.shadowBlur=T.dust?28:18;
+      const pg=ctx.createRadialGradient(pp.x-pr*0.3,pp.y-pr*0.3,0,pp.x,pp.y,pr);
+      pg.addColorStop(0,'hsl('+T.h+','+T.s+'%,'+Math.min(88,T.l+28)+'%)');
+      pg.addColorStop(1,'hsl('+T.h+','+T.s+'%,'+Math.max(15,T.l-8)+'%)');
+      ctx.fillStyle=pg;
+      ctx.beginPath(); ctx.arc(pp.x,pp.y,pr,0,TAU); ctx.fill();
+      drawTex(pp,pr,p,T,now);
+      ctx.restore();
+      if(planetResonant(ci,pi)){
+        ctx.beginPath(); ctx.arc(pp.x,pp.y,pr+4,0,TAU);
+        ctx.strokeStyle='hsla('+T.h+',100%,75%,'+(0.5+0.3*Math.sin(now/200))+')'; ctx.lineWidth=1.5; ctx.stroke();
+      }
+      if(selected && selected.type==='planet' && selected.c===ci && selected.p===pi){
+        ctx.beginPath(); ctx.arc(pp.x,pp.y,pr+7,0,TAU); ctx.strokeStyle='#7fd4ff'; ctx.lineWidth=2; ctx.stroke();
+      }
+      // moons
+      p.moons.forEach((m,k)=>{
+        const mp=mPos(c,p,m,k);
+        ctx.save();
+        ctx.shadowColor=m.tuned?'rgba(180,255,220,0.9)':'rgba(200,210,255,0.7)'; ctx.shadowBlur=8;
+        ctx.fillStyle=m.tuned?'#b8ffdc':'#cfd8ff';
+        ctx.beginPath(); ctx.arc(mp.x,mp.y,3,0,TAU); ctx.fill();
+        ctx.restore();
+      });
+    });
+    // resonance threads + labels
+    resoPairs.filter(r=>r.c===ci).forEach(r=>{
+      if(!c.planets[r.i]||!c.planets[r.j]) return;
+      const p1=pPos(c,c.planets[r.i]), p2=pPos(c,c.planets[r.j]);
+      const a=0.35+0.25*Math.sin(now/250);
+      ctx.strokeStyle='hsla('+hue+',100%,75%,'+a+')'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+      ctx.font='11px sans-serif'; ctx.fillStyle='hsla('+hue+',100%,80%,0.9)'; ctx.textAlign='center';
+      ctx.fillText(r.p+':'+r.q+' ×2',mx,my-6);
+    });
+    resoNear.filter(r=>r.c===ci).forEach(r=>{
+      if(!c.planets[r.i]||!c.planets[r.j]) return;
+      const p1=pPos(c,c.planets[r.i]), p2=pPos(c,c.planets[r.j]);
+      ctx.setLineDash([3,6]); ctx.strokeStyle='rgba(160,175,255,0.25)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); ctx.setLineDash([]);
+      const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+      ctx.font='10px sans-serif'; ctx.fillStyle='rgba(160,175,255,0.55)'; ctx.textAlign='center';
+      ctx.fillText(r.p+':'+r.q+' almost…',mx,my-5);
+    });
+  });
+
+  // placement ghost
+  if(mode==='planet'){
+    const best=nearestRing(mouse.wx,mouse.wy);
+    if(best){
+      const c=S.centers[best.ci], R=ringR(c,best.ring);
+      ctx.beginPath(); ctx.arc(c.x,c.y,R,0,TAU); ctx.strokeStyle='rgba(127,212,255,0.5)'; ctx.lineWidth=2; ctx.stroke();
+      const a=Math.atan2(mouse.wy-c.y,mouse.wx-c.x);
+      ctx.globalAlpha=0.6;
+      ctx.fillStyle='#7fd4ff';
+      ctx.beginPath(); ctx.arc(c.x+Math.cos(a)*R,c.y+Math.sin(a)*R,8,0,TAU); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  } else if(mode==='center'){
+    ctx.globalAlpha=0.55;
+    ctx.fillStyle='#ffd75a';
+    ctx.beginPath(); ctx.arc(mouse.wx,mouse.wy,13,0,TAU); ctx.fill();
+    for(let i=0;i<2;i++){ ctx.beginPath(); ctx.arc(mouse.wx,mouse.wy,58+i*46,0,TAU); ctx.strokeStyle='rgba(255,215,90,0.3)'; ctx.lineWidth=1; ctx.stroke(); }
+    ctx.globalAlpha=1;
+  }
+
+  // particles
+  particles.forEach(p=>{
+    ctx.globalAlpha=1-p.age/p.life;
+    ctx.fillStyle=p.col;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,TAU); ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  // floating text
+  ctx.font='600 13px sans-serif'; ctx.textAlign='center';
+  floats.forEach(f=>{
+    ctx.globalAlpha=1-f.age/1.2;
+    ctx.fillStyle=f.col;
+    ctx.fillText(f.txt,f.x,f.y);
+  });
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // glitch wave slices (screen space)
+  if(now<gWaveUntil){
+    for(let i=0;i<6;i++){
+      const y=Math.random()*H, h=rand(4,40), off=rand(-60,60);
+      ctx.drawImage(cv,0,y,W,h,off,y,W,h);
+    }
+    if(Math.random()<0.4){
+      ctx.fillStyle='rgba('+(Math.random()<.5?'255,61,240':'41,247,255')+','+rand(0.03,0.1)+')';
+      ctx.fillRect(0,Math.random()*H,W,rand(2,20));
+    }
+  } else if(S.glitched && Math.random()<0.02){
+    const y=Math.random()*H,h=rand(2,14);
+    ctx.drawImage(cv,0,y,W,h,rand(-25,25),y,W,h);
+  }
+}
+
+/* ---------------- picking / input ---------------- */
+function nearestRing(x,y){
+  let best=null;
+  S.centers.forEach((c,ci)=>{
+    const d=dist(x,y,c.x,c.y);
+    for(let i=0;i<ringCount(c);i++){
+      const e=Math.abs(d-ringR(c,i));
+      if(e<28 && (!best||e<best.e)) best={ci:ci,ring:i,e:e};
+    }
+  });
+  return best;
+}
+function pick(x,y){
+  // planets first
+  for(let ci=0;ci<S.centers.length;ci++){
+    const c=S.centers[ci];
+    for(let pi=0;pi<c.planets.length;pi++){
+      const pp=pPos(c,c.planets[pi]);
+      if(dist(x,y,pp.x,pp.y)<pRadius(c.planets[pi])+8) return {type:'planet',c:ci,p:pi};
+    }
+  }
+  for(let ci=0;ci<S.centers.length;ci++){
+    if(dist(x,y,S.centers[ci].x,S.centers[ci].y)<cRadius(S.centers[ci])+8) return {type:'center',c:ci};
+  }
+  return null;
+}
+cv.addEventListener('pointerdown',e=>{
+  ac(); if(AC&&AC.state==='suspended')AC.resume();
+  const w=toWorld(e.clientX,e.clientY), x=w.x, y=w.y;
+  if(mode==='planet'){
+    const best=nearestRing(x,y);
+    if(best){
+      const cost=freePlanet(pendingType)?0:costPlanet(pendingType);
+      if(S.stars>=cost){
+        S.stars-=cost;
+        const c=S.centers[best.ci], a=Math.atan2(y-c.y,x-c.x);
+        c.planets.push(newPlanet(best.ring,(a+TAU)%TAU,pendingType));
+        sBuy(); burst(c.x+Math.cos(a)*ringR(c,best.ring),c.y+Math.sin(a)*ringR(c,best.ring),'#7fd4ff',14);
+        mode=null; hint('');
+      } else { toast('Not enough stars!'); mode=null; hint(''); }
+    }
+    return;
+  }
+  if(mode==='move'){
+    const best=nearestRing(x,y);
+    if(best&&movingRef){
+      if(S.dust>=MOVE_COST){
+        S.dust-=MOVE_COST;
+        const src=movingRef.c, p=movingRef.p;
+        const idx=src.planets.indexOf(p);
+        if(idx>=0) src.planets.splice(idx,1);
+        const c2=S.centers[best.ci];
+        p.ring=best.ring; p.a=(Math.atan2(y-c2.y,x-c2.x)+TAU)%TAU;
+        c2.planets.push(p);
+        resoPairs=[]; resoNear=[]; scanResonance();
+        selected=null; renderPanel(); sBuy();
+        burst(c2.x+Math.cos(p.a)*ringR(c2,p.ring),c2.y+Math.sin(p.a)*ringR(c2,p.ring),'#8fe8ff',16);
+        toast('Planet moved for '+MOVE_COST+' P-Dust.');
+      } else toast('Not enough P-Dust!');
+    }
+    mode=null; movingRef=null; hint('');
+    return;
+  }
+  if(mode==='center'){
+    const cost=costCenter();
+    if(S.stars>=cost){
+      S.stars-=cost;
+      S.centers.push(newCenter(x,y));
+      sBuy(); burst(x,y,'#ffd75a',20);
+      toast('New center placed. Careful with spacing — overlapping orbits crash!');
+    } else toast('Not enough stars!');
+    mode=null; hint('');
+    return;
+  }
+  const hit=pick(x,y);
+  if(hit&&hit.type==='center'){ mouse.dragC=hit.c; }
+  selected=hit; renderPanel();
+});
+cv.addEventListener('pointermove',e=>{
+  mouse.x=e.clientX; mouse.y=e.clientY;
+  const w=toWorld(e.clientX,e.clientY);
+  mouse.wx=w.x; mouse.wy=w.y;
+  if(mouse.dragC>=0){
+    S.centers[mouse.dragC].x=w.x; S.centers[mouse.dragC].y=w.y;
+  }
+});
+addEventListener('pointerup',()=>{ mouse.dragC=-1; });
+addEventListener('keydown',e=>{ if(e.key==='Escape'){ mode=null; movingRef=null; hint(''); selected=null; renderPanel(); } });
+
+/* ---------------- UI ---------------- */
+const $=id=>document.getElementById(id);
+function showModal(html){ $('modal').innerHTML=html; $('modalWrap').style.display='flex'; }
+function hideModal(){ $('modalWrap').style.display='none'; }
+UI.hideModal=hideModal;
+function toast(html){
+  const d=document.createElement('div'); d.className='toast'; d.innerHTML=html;
+  $('toasts').appendChild(d);
+  setTimeout(()=>{ d.style.transition='opacity .4s'; d.style.opacity='0'; setTimeout(()=>d.remove(),400); },3600);
+}
+function hint(t){ const h=$('hintLine'); if(!t){h.style.display='none';return;} h.textContent=t; h.style.display='block'; }
+
+$('buyPlanetBtn').onclick=()=>{
+  if(mode==='planet'||mode==='move'){ mode=null; movingRef=null; hint(''); return; }
+  showPlanetPicker();
+};
+function showPlanetPicker(){
+  let cards='';
+  PTYPES.forEach((T,i)=>{
+    const free=freePlanet(i);
+    const cost=free?0:costPlanet(i), can=free||S.stars>=cost;
+    cards+='<div class="pcard '+(can?'':'cant')+'" onclick="UI.pickPlanet('+i+')">'
+      +'<div class="pcircle" style="background:radial-gradient(circle at 35% 35%, hsl('+T.h+','+T.s+'%,'+Math.min(88,T.l+28)+'%), hsl('+T.h+','+T.s+'%,'+Math.max(15,T.l-8)+'%));box-shadow:0 0 12px hsla('+T.h+','+T.s+'%,60%,'+(T.dust?0.95:0.55)+');"></div>'
+      +'<div class="pn">'+T.n+'</div><div class="pd">'+T.d+'</div>'
+      +'<div class="pd">Income &times;'+(T.inc>=1000?fmt(T.inc):T.inc)+(T.dust?' + P-Dust':'')+'</div>'
+      +'<div class="pc">'+(free?'<b style="color:#8fe8ff">FREE</b>':fmt(cost)+' &#9733;')+'</div></div>';
+  });
+  showModal('<h2>Choose a planet</h2><div class="pgrid">'+cards+'</div><button class="mbtn" onclick="UI.hideModal()">Cancel</button>');
+}
+UI.pickPlanet=function(i){
+  if(!freePlanet(i)&&S.stars<costPlanet(i)){ toast('Need '+fmt(costPlanet(i))+' &#9733; for '+PTYPES[i].n); return; }
+  pendingType=i; mode='planet'; hideModal();
+  hint('Click a ring to place '+PTYPES[i].n+' (ESC to cancel)');
+};
+$('buyCenterBtn').onclick=()=>{
+  if(S.stars<costCenter()){ toast('Need '+fmt(costCenter())+' ★'); return; }
+  mode = mode==='center'? null:'center';
+  hint(mode?'Click empty space to place a new center (ESC to cancel)':'');
+};
+$('rebirthBtn').onclick=()=>UI.rebirthClick();
+$('boostBtn').onclick=()=>UI.showBoosts();
+UI.showBoosts=function(){
+  const now=Date.now();
+  if(boostActive()){
+    const s=Math.ceil((S.boost.until-now)/1000);
+    showModal('<h2>Boosts</h2><p style="font-size:14px">'+S.boost.mult+'x boost active &mdash; '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' left. One boost at a time!</p><button class="mbtn" onclick="UI.hideModal()">Close</button>');
+    return;
+  }
+  const r=Math.max(S.rate||0,0.5);
+  const opts=[
+    {k:'spd',m:2,min:5,c:Math.max(100,Math.floor(r*90)),label:'2x Speed'},
+    {k:'inc',m:2,min:10,c:Math.max(100,Math.floor(r*180)),label:'2x Stars'},
+    {k:'inc',m:3,min:5, c:Math.max(300,Math.floor(r*400)),label:'3x Stars'},
+    {k:'inc',m:5,min:2, c:Math.max(1000,Math.floor(r*900)),label:'5x Stars'},
+  ];
+  let html='';
+  opts.forEach((o,i)=>{
+    const free=(!S.boostUsed&&i===0);
+    html+='<button class="mbtn" onclick="UI.buyBoost(\''+o.k+'\','+o.m+','+o.min+','+(free?0:o.c)+')">'+o.label+' for '+o.min+' min &mdash; '+(free?'<b style="color:#8fe8ff">FREE (first time!)</b>':fmt(o.c)+' &#9733;')+'</button>';
+  });
+  showModal('<h2>Boosts</h2><p style="font-size:12px;opacity:.7">Speed boosts spin planets faster. Star boosts multiply income.</p>'+html+'<button class="mbtn" onclick="UI.hideModal()">Close</button>');
+};
+UI.buyBoost=function(k,m,min,cost){
+  if(boostActive()) return;
+  if(cost>0&&S.stars<cost){ toast('Not enough stars!'); return; }
+  S.stars-=cost;
+  S.boostUsed=true;
+  S.boost={kind:k,mult:m,until:Date.now()+min*60000};
+  hideModal(); sChime();
+  burst(W/2,H/2,'#ffd75a',30);
+  toast(m+'x '+(k==='spd'?'speed':'star')+' boost active for '+min+' minutes!');
+};
+$('muteBtn').onclick=()=>{ muted=!muted; $('muteBtn').innerHTML=muted?'Sound: off':'Sound: on'; };
+$('helpBtn').onclick=()=>showHelp();
+function showHelp(){
+  showModal(`<h2>ORBIT</h2>
+  <ul style="line-height:1.7">
+  <li>Planets earn <b style="color:#ffd75a">stars ★</b> every full lap.</li>
+  <li>Buy planets &amp; click a ring to place them. Grow them for more income.</li>
+  <li>Moons multiply their planet. Tune a moon to a clean ratio for &times;2.</li>
+  <li>Two planets at clean speed ratios (2:1, 3:2&hellip;) lock into <b>resonance</b> — both earn &times;2. Watch for the dotted "almost" lines.</li>
+  <li>Close passes spark bonus stars. Eclipses (moon crossing in front) pay too.</li>
+  <li>Orbits from different centers can overlap — rings glow <b style="color:#ff7070">red</b>. If planets collide you can save them&hellip; for a price. Drag centers to fix spacing.</li>
+  <li>Rebirth resets all for a permanent &times;1.5 multiplier.</li>
+  <li>Prisma planets shed <b style="color:#8fe8ff">P-Dust</b> every lap &mdash; spend it to move planets between rings.</li>
+  <li>Grow your solar system and climb the leaderboard!</li>
+  </ul>
+  <button class="mbtn" onclick="UI.hideModal()">Spin on</button>
+  <div style="font-size:11px;opacity:.4;margin-top:6px;cursor:pointer" onclick="UI.hardReset()">hard reset save</div>`);
+}
+UI.hardReset=function(){ if(confirm('Wipe EVERYTHING including rebirths?')){ try{localStorage.removeItem(saveKey());localStorage.removeItem('orbitSave');}catch(e){} S=freshState(null); S.seenHelp=true; hideModal(); } };
+
+/* panel */
+UI.act=function(what){
+  if(!selected) return;
+  const c=S.centers[selected.c];
+  if(selected.type==='center'){
+    if(what==='growC'){
+      const cost=costGrowC(c);
+      if(S.stars>=cost&&ringCount(c)<maxRings){ S.stars-=cost; c.tier++; sBuy(); burst(c.x,c.y,'#ffd75a',18); }
+    }
+  } else {
+    const p=c.planets[selected.p];
+    if(!p) return;
+    if(what==='grow'){ const cost=freeUpgrade()?0:costGrow(p); if(S.stars>=cost&&p.tier<5){ S.stars-=cost; p.tier++; tutUpgraded=true; sBuy(); const pp=pPos(c,p); burst(pp.x,pp.y,'#ffd75a',12);} }
+    if(what==='spd'){
+      const cost=freeUpgrade()?0:costSpd(p);
+      if(S.stars>=cost){
+        S.stars-=cost; p.spdLvl++; tutUpgraded=true; sBuy();
+        // snap-assist: if now within 3.5% of clean ratio with a neighbor, snap exactly
+        let snapped=null;
+        p.snapMul=1;
+        c.planets.forEach(o=>{
+          if(o===p||snapped) return;
+          const b=ratioCheck(pSpeed(p),pSpeed(o));
+          if(b&&b.err<0.035){
+            const target=(pSpeed(p)>pSpeed(o)? b.p/b.q : b.q/b.p)*pSpeed(o);
+            p.snapMul=target/pSpeed(p);
+            snapped=b;
+          }
+        });
+        if(snapped){ sChime(); toast('Locked into '+snapped.p+':'+snapped.q+' resonance! &times;2 for both'); }
+      }
+    }
+    if(what==='moon'){ const cost=freeUpgrade()?0:costMoon(p); if(S.stars>=cost&&p.moons.length<4){ S.stars-=cost; p.moons.push(newMoon(p.moons.length)); tutUpgraded=true; sBuy(); } }
+    if(what==='move'){
+      if(S.dust>=MOVE_COST){
+        movingRef={c:c,p:p}; mode='move';
+        hint('Click any ring to move '+PTYPES[p.type||0].n+' there ('+MOVE_COST+' P-Dust, ESC to cancel)');
+      } else toast('Need '+MOVE_COST+' P-Dust. Prisma planets shed it every lap.');
+    }
+    if(what.startsWith('tune')){
+      const k=+what.slice(4), m=p.moons[k];
+      if(m&&!m.tuned&&S.stars>=costTune(m)){ S.stars-=costTune(m); m.ratio=Math.round(m.ratio); m.tuned=true; sChime();
+        toast('Moon tuned to '+m.ratio+':1 — counts double!'); }
+    }
+  }
+  renderPanel();
+};
+function renderPanel(){
+  const el=$('panel');
+  if(!selected){ el.style.display='none'; return; }
+  const c=S.centers[selected.c];
+  if(!c){ selected=null; el.style.display='none'; return; }
+  el.style.display='block';
+  if(selected.type==='center'){
+    const cost=costGrowC(c), can=S.stars>=cost&&ringCount(c)<maxRings;
+    el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
+      <h3>Center ${selected.c+1}</h3>
+      <div style="font-size:12px;opacity:.75">Rings: ${ringCount(c)} / ${maxRings} &middot; Planets: ${c.planets.length}</div>
+      <div class="brk">Grow the center to unlock another orbit ring &rarr; room for more planets.</div>
+      <button class="pbtn ${can?'':'cant'}" onclick="UI.act('growC')">Grow center (+1 ring) <span class="c">${ringCount(c)>=maxRings?'MAX':fmt(cost)+' ★'}</span></button>
+      <div class="hint">Drag the center to reposition its whole system.</div>`;
+  } else {
+    const p=c.planets[selected.p];
+    if(!p){ selected=null; el.style.display='none'; return; }
+    const inc=planetIncome(c,selected.c,p,selected.p);
+    const rz=planetResonant(selected.c,selected.p);
+    const fu=freeUpgrade();
+    const gCost=fu?0:costGrow(p), sCost=fu?0:costSpd(p), mCost=fu?0:costMoon(p);
+    const cTxt=v=>fu?'FREE':fmt(v)+' ★';
+    // speed preview: near-resonance hint
+    let spdHint='';
+    {
+      const cur=pSpeed(p), next=cur*1.13;
+      c.planets.forEach(o=>{ if(o===p) return;
+        const b=ratioCheck(next,pSpeed(o));
+        if(b&&b.err<0.035) spdHint='next upgrade locks '+b.p+':'+b.q+' resonance!';
+      });
+    }
+    let moonRows='';
+    p.moons.forEach((m,k)=>{
+      moonRows+=m.tuned?
+        `<div style="font-size:12px;margin:3px 0">Moon ${k+1}: tuned ${Math.round(m.ratio)}:1 (counts &times;2)</div>`:
+        `<button class="pbtn ${S.stars>=costTune(m)?'':'cant'}" onclick="UI.act('tune${k}')">Tune moon ${k+1} to clean ratio <span class="c">${fmt(costTune(m))} ★</span></button>`;
+    });
+    const T=PTYPES[p.type||0];
+    el.innerHTML=`<span class="close" onclick="UI.deselect()">&#10005;</span>
+      <h3>${T.n} <span style="font-size:12px;opacity:.6">tier ${p.tier} &middot; ring ${p.ring+1}</span></h3>
+      <div style="font-size:12px;opacity:.75">${lapsMin(p).toFixed(1)} laps/min${T.dust?' &middot; <span style="color:#8fe8ff">sheds '+p.tier+' P-Dust/lap</span>':''}</div>
+      <div class="brk">Income/lap: ${T.inc>=1000?fmt(p.tier*p.tier*T.inc):Math.round(p.tier*p.tier*T.inc*10)/10} base &times; ${moonMult(p)} moons ${rz?'&times; 2 <b style="color:#9fd8ff">resonance</b>':''} &times; ${rbMult().toFixed(2)} rebirth ${boostActive()?'&times; '+S.boost.mult+' <b style="color:#ffd75a">boost</b>':''} = <b style="color:#ffd75a">${fmt(inc)} ★</b></div>
+      <button id="growBtn" class="pbtn ${S.stars>=gCost&&p.tier<5?'':'cant'}" onclick="UI.act('grow')">Grow planet ${p.tier>=5?'(MAX)':'(bigger + more ★)'} <span class="c">${p.tier>=5?'':cTxt(costGrow(p))}</span></button>
+      <button id="spdBtn" class="pbtn ${S.stars>=sCost?'':'cant'}" onclick="UI.act('spd')">Speed +13% (${lapsMin(p).toFixed(1)}&rarr;${(lapsMin(p)*1.13).toFixed(1)} lpm) <span class="c">${cTxt(costSpd(p))}</span></button>
+      ${spdHint?'<div class="hint">'+spdHint+'</div>':''}
+      <button id="moonBtn" class="pbtn ${S.stars>=mCost&&p.moons.length<4?'':'cant'}" onclick="UI.act('moon')">Buy moon ${p.moons.length}/4 (&times;${moonMult(p)}&rarr;&times;${moonMult(p)+1}) <span class="c">${p.moons.length>=4?'MAX':cTxt(costMoon(p))}</span></button>
+      ${moonRows}
+      <button class="pbtn ${S.dust>=MOVE_COST?'':'cant'}" onclick="UI.act('move')">Move planet <span class="c">${MOVE_COST} P-Dust</span></button>
+      ${p.tier>=4?'<div class="hint">Big planets need clearance — watch for red rings.</div>':''}`;
+  }
+}
+UI.deselect=function(){ selected=null; renderPanel(); };
+
+function renderHud(){
+  if(!scrambleTimer) $('starsVal').textContent=fmt(S.stars);
+  $('multLine').innerHTML=(S.rebirths>0?'&times;'+rbMult().toFixed(2)+' rebirth':'')+(S.glitched?' <span style="color:#ff3df0">CORRUPTED</span>':'');
+  S.rate=curRate();
+  $('rateLine').textContent=S.rate>0.05? fmt(S.rate)+' ★/s':'';
+  const anyDust=S.dust>0||S.centers.some(c=>c.planets.some(p=>PTYPES[p.type||0].dust));
+  $('dustLine').textContent=anyDust? fmt(S.dust)+' P-Dust':'';
+  const bp=$('buyPlanetBtn'), bc=$('buyCenterBtn');
+  bp.innerHTML='Buy Planet';
+  bc.innerHTML='Buy Center<span class="cost">'+fmt(costCenter())+' ★</span>';
+  bp.classList.remove('cant');
+  const bb=$('boostBtn');
+  if(boostActive()){
+    const s=Math.ceil((S.boost.until-Date.now())/1000);
+    bb.innerHTML=S.boost.mult+'x '+(S.boost.kind==='spd'?'Speed':'Stars')+'<span class="cost">'+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+'</span>';
+  } else bb.innerHTML='Boosts'+(!S.boostUsed?'<span class="cost">first one FREE</span>':'');
+  bc.classList.toggle('cant',S.stars<costCenter());
+  bp.classList.toggle('active',mode==='planet');
+  bc.classList.toggle('active',mode==='center');
+  const rb=$('rebirthBtn');
+  const reqs=rbReqs(), done=reqs.filter(r=>r.ok).length;
+  rb.classList.toggle('locked',!rbReady());
+  rb.innerHTML=rbReady()? 'Rebirth ready! (&times;'+(rbMult()*1.5).toFixed(2)+')' : 'Rebirth '+done+'/'+reqs.length;
+}
+
+/* ---------------- tutorial ---------------- */
+let tutT0=0, tutUpgraded=false;
+function w2s(wx,wy){ return {x:(wx-cam.x)*cam.scale+W/2, y:(wy-cam.y)*cam.scale+H/2}; }
+function rectTarget(id){
+  const el=document.getElementById(id); if(!el) return null;
+  const r=el.getBoundingClientRect(); if(!r.width) return null;
+  return {x:r.left+r.width/2, y:r.top};
+}
+function firstPlanetTarget(){
+  const c=S.centers[0]; if(!c||!c.planets[0]) return null;
+  const pp=pPos(c,c.planets[0]);
+  return w2s(pp.x,pp.y-pRadius(c.planets[0])-4);
+}
+const TUT=[
+  {t:'Click here to buy your first planet!',
+    tg:()=>rectTarget('buyPlanetBtn'),
+    ok:()=>mode==='planet'||countPlanets()>0},
+  {t:'Now click one of the glowing rings to place it!',
+    tg:()=>{const c=S.centers[0]; return w2s(c.x,c.y-ringR(c,0));},
+    ok:()=>countPlanets()>0,
+    back:()=>mode!=='planet'&&countPlanets()===0},
+  {t:'It earns &#9733; every lap! Click your planet to open upgrades.',
+    tg:firstPlanetTarget,
+    ok:()=>!!(selected&&selected.type==='planet')},
+  {t:'Buy an upgrade &mdash; it&rsquo;s FREE during the tutorial!',
+    tg:()=>rectTarget('spdBtn')||firstPlanetTarget(),
+    ok:()=>tutUpgraded},
+  {t:'Last thing: grab a boost here. Your first one is FREE!',
+    tg:()=>rectTarget('boostBtn'),
+    ok:()=>S.boostUsed||boostActive()},
+  {t:'You&rsquo;re set! Have fun, grow your solar system, and climb the leaderboard! Press ? anytime for help.',
+    tg:()=>({x:W/2,y:170}), noArrow:true,
+    ok:()=>performance.now()-tutT0>9000},
+];
+function updateTut(){
+  const tip=$('tutTip');
+  if(S.tut===undefined||S.tut<0||S.tut>=TUT.length){ tip.style.display='none'; return; }
+  const st=TUT[S.tut];
+  if(st.back&&st.back()){ S.tut--; return; }
+  if(st.ok()){
+    S.tut++; tutT0=performance.now();
+    if(S.tut>=TUT.length){ S.tut=-1; tip.style.display='none'; save(); }
+    return;
+  }
+  const p=st.tg();
+  if(!p){ tip.style.display='none'; return; }
+  tip.querySelector('.label').innerHTML=st.t;
+  tip.querySelector('.arrow').style.display=st.noArrow?'none':'block';
+  tip.style.display='block';
+  tip.style.left=clamp(p.x,140,W-140)+'px';
+  tip.style.top=Math.max(4,p.y-(st.noArrow?40:86))+'px';
+}
+
+/* ---------------- auth ----------------
+   Accounts use Firebase when FIREBASE_CONFIG is filled in (real cloud accounts
+   + cloud saves). Until then they fall back to device-local storage.
+   To enable: create a project at console.firebase.google.com, turn on
+   Email/Password sign-in + Firestore, then paste the web app config below. */
+const FIREBASE_CONFIG={
+  apiKey: "AIzaSyAWM8ln4ZOYOvn9jx-lNLDtgvAebxd0Nws",
+  authDomain: "orbit-d0308.firebaseapp.com",
+  projectId: "orbit-d0308",
+  storageBucket: "orbit-d0308.firebasestorage.app",
+  messagingSenderId: "857570240638",
+  appId: "1:857570240638:web:89c1c826d222217ea9902f"
+};
+let FB=null;
+try{
+  if(FIREBASE_CONFIG&&window.firebase){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    FB={auth:firebase.auth(),db:firebase.firestore()};
+  }
+}catch(e){ FB=null; }
+const AUTH={cur:null,uid:null};
+function saveKey(){ return 'orbitSave_'+(AUTH.uid||AUTH.cur||'guest'); }
+function cloudSave(){
+  if(!FB||!AUTH.uid||!S) return Promise.resolve();
+  try{ return FB.db.collection('saves').doc(AUTH.uid).set({data:JSON.stringify(S),at:Date.now()}).catch(()=>{}); }
+  catch(e){ return Promise.resolve(); }
+}
+function cloudLoad(){
+  if(!FB||!AUTH.uid) return Promise.resolve();
+  return FB.db.collection('saves').doc(AUTH.uid).get().then(doc=>{
+    if(!doc.exists) return;
+    const remote=JSON.parse(doc.data().data);
+    let local=null;
+    try{ local=JSON.parse(localStorage.getItem(saveKey())||'null'); }catch(e){}
+    if(!local||((remote.savedAt||0)>(local.savedAt||0))){
+      try{ localStorage.setItem(saveKey(),JSON.stringify(remote)); }catch(e){}
+    }
+  }).catch(()=>{});
+}
+setInterval(()=>{ cloudSave(); lbUpdate(); },30000);
+
+/* ---------------- leaderboard ---------------- */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function lbUpdate(){
+  if(!FB||!AUTH.uid||!AUTH.name||!S) return;
+  try{
+    FB.db.collection('leaderboard').doc(AUTH.uid).set({
+      name:AUTH.name, score:Math.floor(S.lifetime||0), rebirths:S.rebirths||0, at:Date.now()
+    }).catch(()=>{});
+  }catch(e){}
+}
+function ensureName(){
+  if(!FB||!AUTH.uid) return;
+  if(AUTH.name){ lbUpdate(); return; }
+  FB.db.collection('leaderboard').doc(AUTH.uid).get().then(doc=>{
+    if(doc.exists&&doc.data().name){ AUTH.name=doc.data().name; lbUpdate(); }
+    else askName();
+  }).catch(()=>{});
+}
+function askName(){
+  showModal('<h2>Display name</h2><p style="font-size:13px;opacity:.8">Pick the name shown on the leaderboard.</p>'
+    +'<input id="nameInput" maxlength="16" placeholder="2-16 characters" style="width:100%;box-sizing:border-box;background:rgba(25,32,66,.8);border:1px solid rgba(130,150,255,.3);border-radius:10px;color:#eef2ff;padding:11px;font-size:14px;outline:none;">'
+    +'<div id="authMsg" class="authErr"></div>'
+    +'<button class="mbtn" onclick="UI.saveName()">Save</button>');
+}
+UI.saveName=function(){
+  const n=document.getElementById('nameInput').value.trim();
+  if(n.length<2||n.length>16) return authMsg('Name must be 2-16 characters.');
+  AUTH.name=n; hideModal(); lbUpdate();
+};
+UI.showLeaderboard=function(){
+  if(!FB){
+    showModal('<h2>Leaderboard</h2><p style="font-size:14px;opacity:.8">The leaderboard is online-only.</p><button class="mbtn" onclick="UI.hideModal()">Close</button>');
+    return;
+  }
+  showModal('<h2>Leaderboard</h2><div id="lbList" style="font-size:13px;opacity:.7">Loading...</div><button class="mbtn" onclick="UI.hideModal()">Close</button>');
+  FB.db.collection('leaderboard').orderBy('score','desc').limit(20).get().then(snap=>{
+    let html='', i=0;
+    snap.forEach(doc=>{
+      i++;
+      const d=doc.data(), me=AUTH.uid===doc.id;
+      html+='<div class="lbRow'+(me?' me':'')+'"><span class="lbRank">'+i+'</span>'
+        +'<span class="lbName">'+escapeHtml(d.name||'???')+'</span>'
+        +'<span class="lbRb">'+(d.rebirths||0)+' rebirths</span>'
+        +'<span class="lbScore">'+fmt(d.score||0)+' &#9733;</span></div>';
+    });
+    const el=document.getElementById('lbList');
+    if(el){ el.style.opacity=1; el.innerHTML=html||'<div style="opacity:.7">Nobody here yet. Be the first!</div>'; }
+  }).catch(err=>{
+    const el=document.getElementById('lbList');
+    if(el) el.textContent='Could not load: '+err.message;
+  });
+};
+function accGet(){ try{return JSON.parse(localStorage.getItem('orbitAccounts')||'{}');}catch(e){ return {}; } }
+function accSet(a){ try{localStorage.setItem('orbitAccounts',JSON.stringify(a));}catch(e){} }
+function hashPw(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return 'h'+h; }
+function authMsg(t){ const m=document.getElementById('authMsg'); if(m) m.textContent=t; }
+function renderAuth(view){
+  const card=document.getElementById('authCard');
+  const offNote=FB?'':'<div class="authErr" style="min-height:0;margin-bottom:8px;">OFFLINE MODE: cloud accounts unreachable (blocked network or ad-blocker?). Accounts made now save on this device only.</div>';
+  if(view==='signup'){
+    card.innerHTML=`<h2>Sign up</h2>${offNote}
+      <input id="auEmail" type="text" maxlength="16" placeholder="Username (shown on leaderboard)">
+      <div class="pwRow"><input id="auPw" type="password" placeholder="Create password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
+      <div class="pwRow"><input id="auPw2" type="password" placeholder="Confirm password"><button onclick="UI.togglePw('auPw2',this)">show</button></div>
+      <div class="authAlt" style="opacity:.6">No email needed &mdash; but there is no password reset, so don't forget it!</div>
+      <div id="authMsg" class="authErr"></div>
+      <button class="authBtn" onclick="UI.authSignup()">Sign up</button>
+      <div class="authAlt">Already have an account? <a onclick="renderAuth('login')">Login</a></div>
+      <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
+  } else {
+    card.innerHTML=`<h2>Login</h2>${offNote}
+      <input id="auEmail" type="text" placeholder="Username">
+      <div class="pwRow"><input id="auPw" type="password" placeholder="Password"><button onclick="UI.togglePw('auPw',this)">show</button></div>
+      <div id="authMsg" class="authErr"></div>
+      <button class="authBtn" onclick="UI.authLogin()">Login</button>
+      <div class="authAlt">Don't have an account? <a onclick="renderAuth('signup')">Sign up</a></div>
+      <div class="authAlt"><a onclick="UI.authGuest()">Continue as guest</a></div>`;
+  }
+}
+UI.togglePw=function(id,btn){ const i=document.getElementById(id); if(!i)return; i.type=i.type==='password'?'text':'password'; btn.textContent=i.type==='password'?'show':'hide'; };
+UI.authForgot=function(){
+  if(FB){
+    const e=document.getElementById('auEmail').value.trim().toLowerCase();
+    if(!e) return authMsg('Type your email above first, then click forgot password.');
+    FB.auth.sendPasswordResetEmail(e)
+      .then(()=>authMsg('Password reset email sent. Check your inbox.'))
+      .catch(err=>authMsg(err.message));
+    return;
+  }
+  authMsg('Accounts are stored on this device only, so there is no email reset. Create a new account if needed.');
+};
+UI.authSocial=function(){ authMsg('Facebook login is a placeholder for now.'); };
+UI.authGoogle=function(){
+  if(!FB) return authMsg('Google login needs the Firebase connection.');
+  authMsg('Opening Google sign-in...');
+  const prov=new firebase.auth.GoogleAuthProvider();
+  FB.auth.signInWithPopup(prov).then(cred=>{
+    AUTH.cur=cred.user.email; AUTH.uid=cred.user.uid;
+    cloudLoad().then(startGame).catch(startGame);
+  }).catch(err=>authMsg(err.message));
+};
+function synthEmail(u){ return u.toLowerCase()+'@orbit.game'; }
+UI.authSignup=function(){
+  const u=document.getElementById('auEmail').value.trim();
+  const p1=document.getElementById('auPw').value, p2=document.getElementById('auPw2').value;
+  if(!/^[A-Za-z0-9_]{2,16}$/.test(u)) return authMsg('Username: 2-16 letters, numbers or _ only.');
+  if(p1.length<6) return authMsg('Password must be at least 6 characters.');
+  if(p1!==p2) return authMsg('Passwords do not match.');
+  const em=synthEmail(u);
+  AUTH.name=u;
+  if(FB){
+    authMsg('Creating account...');
+    FB.auth.createUserWithEmailAndPassword(em,p1).then(cred=>{
+      AUTH.cur=u; AUTH.uid=cred.user.uid;
+      startGame();
+    }).catch(err=>authMsg(err.code==='auth/email-already-in-use'?'That username is taken.':err.message));
+    return;
+  }
+  const acc=accGet();
+  if(acc[em]) return authMsg('That username already exists on this device.');
+  acc[em]={pw:hashPw(p1),created:Date.now()}; accSet(acc);
+  AUTH.cur=u; try{localStorage.setItem('orbitUser',u);}catch(err){}
+  startGame();
+};
+UI.authLogin=function(){
+  const u=document.getElementById('auEmail').value.trim();
+  const p=document.getElementById('auPw').value;
+  if(!u) return authMsg('Enter your username.');
+  const em=u.includes('@')? u.toLowerCase() : synthEmail(u);
+  if(FB){
+    authMsg('Logging in...');
+    FB.auth.signInWithEmailAndPassword(em,p).then(cred=>{
+      AUTH.cur=u.includes('@')? u.split('@')[0] : u; AUTH.uid=cred.user.uid;
+      cloudLoad().then(startGame).catch(startGame);
+    }).catch(err=>authMsg(
+      (err.code==='auth/invalid-credential'||err.code==='auth/wrong-password'||err.code==='auth/user-not-found')?
+      'Wrong username or password.':err.message));
+    return;
+  }
+  const acc=accGet();
+  if(!acc[em]) return authMsg('No account with that username on this device.');
+  if(acc[em].pw!==hashPw(p)) return authMsg('Wrong password.');
+  AUTH.cur=u; try{localStorage.setItem('orbitUser',u);}catch(err){}
+  startGame();
+};
+UI.authGuest=function(){ try{localStorage.setItem('orbitGuest','1');}catch(e){} AUTH.cur=null; startGame(); };
+UI.logout=function(){
+  save();
+  const done=()=>{ try{localStorage.removeItem('orbitUser');localStorage.removeItem('orbitGuest');}catch(e){} location.reload(); };
+  if(FB&&AUTH.uid){ cloudSave().then(()=>FB.auth.signOut()).then(done).catch(done); }
+  else done();
+};
+
+/* ---------------- save / load ---------------- */
+function save(){
+  if(!S) return;
+  try{
+    S.savedAt=Date.now(); S.rateSaved=S.rate;
+    localStorage.setItem(saveKey(),JSON.stringify(S));
+  }catch(e){}
+}
+function load(){
+  try{
+    const raw=localStorage.getItem(saveKey()) || (AUTH.cur? null : localStorage.getItem('orbitSave'));
+    if(!raw) return false;
+    const d=JSON.parse(raw);
+    if(!d||d.v!==3) return false;
+    S=d;
+    S.gNext=performance.now()+15000;
+    if(typeof S.tut==='undefined') S.tut = S.centers.some(c=>c.planets.length>0)? -1 : 0;
+    if(typeof S.dust==='undefined') S.dust=0;
+    if(typeof S.lifetime==='undefined') S.lifetime=S.total||0;
+    if(!S.boost) S.boost={mult:1,until:0};
+    if(!S.boost.kind) S.boost.kind='inc';
+    if(typeof S.boostUsed==='undefined') S.boostUsed=true; // existing players skip the free-boost tutorial
+    S.centers.forEach(c=>c.planets.forEach(p=>{
+      if(typeof p.type==='undefined') p.type=0;
+      if(typeof p.seed==='undefined') p.seed=Math.floor(Math.random()*1000);
+    }));
+    if(S.glitched) document.body.classList.add('glitched');
+    // offline earnings
+    const away=(Date.now()-S.savedAt)/1000;
+    if(away>60 && S.rateSaved>0){
+      const gain=Math.floor(Math.min(away,8*3600)*S.rateSaved*0.5);
+      if(gain>0){ S.stars+=gain; S.total+=gain; S.lifetime=(S.lifetime||0)+gain;
+        setTimeout(()=>toast('While you were away: +'+fmt(gain)+' ★'),800); }
+    }
+    return true;
+  }catch(e){ return false; }
+}
+setInterval(save,5000);
+addEventListener('beforeunload',save);
+
+/* ---------------- main loop ---------------- */
+let last=performance.now(), panelT=0, resoT=0;
+function loop(now){
+  try{
+    const dt=clamp((now-last)/1000,0,0.05); last=now;
+    resoT+=dt; if(resoT>0.5){ resoT=0; scanResonance(); }
+    updateCam(dt);
+    step(dt);
+    updFx(dt);
+    draw();
+    renderHud();
+    updateTut();
+    panelT+=dt; if(panelT>0.5){ panelT=0; if(selected) renderPanel(); }
+  }catch(e){ console.error('loop error:',e); } // never let one bad frame freeze the game
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- boot ---------------- */
+function startGame(){
+  document.getElementById('authWrap').style.display='none';
+  if(!load()){ S=freshState(null); }
+  S.centers.forEach(c=>{ c.x=clamp(c.x,40,W-40); c.y=clamp(c.y,40,H-40); });
+  { const t0=camTargets(); cam.scale=t0.s; cam.x=t0.x; cam.y=t0.y; } // start framed
+  scanResonance();
+  S.seenHelp=true; // tutorial arrows replace the auto help popup; "?" still opens it
+  const lb=document.getElementById('logoutBtn');
+  lb.style.display='inline-block';
+  lb.textContent=AUTH.cur? 'Log out ('+AUTH.cur.split('@')[0]+')':'Log out (guest)';
+  ensureName();
+  last=performance.now();
+  requestAnimationFrame(loop);
+}
+resize();
+function showAuth(){ renderAuth('login'); document.getElementById('authWrap').style.display='flex'; }
+(function boot(){
+  let g=null;
+  try{ g=localStorage.getItem('orbitGuest'); }catch(e){}
+  if(FB){
+    let handled=false;
+    FB.auth.onAuthStateChanged(u=>{
+      if(handled) return; handled=true;
+      if(u){ AUTH.cur=u.email; AUTH.uid=u.uid; cloudLoad().then(startGame).catch(startGame); }
+      else if(g) startGame();
+      else showAuth();
+    });
+    setTimeout(()=>{ if(!handled){ handled=true; if(g) startGame(); else showAuth(); } },4000);
+    return;
+  }
+  let u=null;
+  try{ u=localStorage.getItem('orbitUser'); }catch(e){}
+  if(u){ AUTH.cur=u; startGame(); }
+  else if(g){ startGame(); }
+  else showAuth();
+})();
+</script>
+</body>
+</html>
